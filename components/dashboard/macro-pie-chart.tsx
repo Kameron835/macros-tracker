@@ -45,7 +45,13 @@ export default function MacroPieChart({
                 <Cell fill="#34d399" />
                 <Cell fill="#6ee7b7" />
               </Pie>
-              <Tooltip formatter={(value: number) => `${value.toFixed(1)} g`} />
+              <Tooltip
+              formatter={(value) => {
+                const numericValue = Number(value ?? 0)
+                return `${numericValue.toFixed(1)} g`
+                 }}
+                 />
+              
               <Legend />
             </PieChart>
           </ResponsiveContainer>

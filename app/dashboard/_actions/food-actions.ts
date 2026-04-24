@@ -236,10 +236,9 @@ export async function removeFoodFromToday(itemId: number) {
     throw new Error(itemError?.message || 'Food entry not found.')
   }
 
-  const ownerId = Array.isArray(item.daily_logs)
-    ? item.daily_logs[0]?.user_id
-    : item.daily_logs?.user_id
-
+  const dailyLog = item.daily_logs as unknown as { user_id: string } | null
+    const ownerId = dailyLog?.user_id
+    
   if (ownerId !== user.id) {
     throw new Error('You can only remove your own food entries.')
   }

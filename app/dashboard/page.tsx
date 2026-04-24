@@ -152,7 +152,8 @@ export default async function DashboardPage({
       throw new Error(selectedItemsError.message)
     }
 
-    selectedItemsWithFoods = (selectedItems as TodayItem[]) ?? []
+    selectedItemsWithFoods =
+     (selectedItems as unknown as TodayItem[]) ?? []
 
     for (const item of selectedItemsWithFoods) {
       totalCalories += Number(item.calories ?? 0)
