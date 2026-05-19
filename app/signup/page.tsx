@@ -40,7 +40,7 @@ export default function SignupPage() {
     }
 
     if (data.user) {
-      router.push('/auth/confirmed')
+      router.push('/auth/check-email')
     }
   }
 
