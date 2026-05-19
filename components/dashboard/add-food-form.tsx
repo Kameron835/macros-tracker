@@ -40,6 +40,25 @@ type AddFoodFormProps = {
 
 const mealOptions = ['Breakfast', 'Lunch', 'Dinner', 'Snacks'] as const
 
+function formatNumber(value: number | null | undefined, decimals = 0) {
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(Number(value ?? 0))
+}
+
+function getSourceLabel(food: FoodOption) {
+  if (food.source === 'USDA FoodData Central') {
+    return 'USDA'
+  }
+
+  if (food.source === 'custom') {
+    return 'Custom'
+  }
+
+  return food.source ?? 'Manual'
+}
+
 export default function AddFoodForm({ foods, logDate }: AddFoodFormProps) {
   const [query, setQuery] = useState('')
   const [selectedFoodId, setSelectedFoodId] = useState<number | null>(null)
@@ -61,10 +80,29 @@ export default function AddFoodForm({ foods, logDate }: AddFoodFormProps) {
 
     return foods
       .filter((food) => {
-        const haystack = `${food.name} ${food.category ?? ''}`.toLowerCase()
+        const haystack = [
+          food.name,
+          food.category ?? '',
+          food.brand_name ?? '',
+          food.source ?? '',
+        ]
+          .join(' ')
+          .toLowerCase()
+
         return queryWords.every((word) => haystack.includes(word))
       })
-      .slice(0, 12)
+      .sort((a, b) => {
+        const aName = a.name.toLowerCase()
+        const bName = b.name.toLowerCase()
+        const aStarts = aName.startsWith(trimmed)
+        const bStarts = bName.startsWith(trimmed)
+
+        if (aStarts && !bStarts) return -1
+        if (!aStarts && bStarts) return 1
+
+        return aName.localeCompare(bName)
+      })
+      .slice(0, 15)
   }, [foods, query])
 
   const selectedFood =
@@ -86,6 +124,7 @@ export default function AddFoodForm({ foods, logDate }: AddFoodFormProps) {
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+
     setError('')
     setSuccess('')
 
@@ -121,8 +160,9 @@ export default function AddFoodForm({ foods, logDate }: AddFoodFormProps) {
   return (
     <div className="rounded-3xl border border-neutral-800 bg-neutral-900 p-6">
       <h2 className="text-2xl font-semibold">Add food</h2>
+
       <p className="mt-2 text-sm text-neutral-400">
-        Search your imported food database and add a serving by grams.
+        Search your nutrition database and add a serving by grams.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
@@ -130,12 +170,13 @@ export default function AddFoodForm({ foods, logDate }: AddFoodFormProps) {
           <label className="mb-2 block text-sm text-neutral-300">
             Meal section
           </label>
+
           <select
             value={mealType}
             onChange={(e) =>
               setMealType(e.target.value as (typeof mealOptions)[number])
             }
-            className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 outline-none focus:border-white"
+            className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 outline-none transition focus:border-emerald-500"
           >
             {mealOptions.map((meal) => (
               <option key={meal} value={meal}>
@@ -149,12 +190,13 @@ export default function AddFoodForm({ foods, logDate }: AddFoodFormProps) {
           <label className="mb-2 block text-sm text-neutral-300">
             Search foods
           </label>
+
           <input
             type="text"
             value={query}
             onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="Search rice, chicken, oats..."
-            className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 outline-none focus:border-white"
+            placeholder="Search chicken, rice, banana, salmon..."
+            className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 outline-none transition focus:border-emerald-500"
           />
         </div>
 
@@ -163,13 +205,13 @@ export default function AddFoodForm({ foods, logDate }: AddFoodFormProps) {
             Search results
           </label>
 
-          <div className="max-h-64 overflow-y-auto rounded-2xl border border-neutral-800 bg-neutral-950">
+          <div className="max-h-96 overflow-y-auto rounded-2xl border border-neutral-800 bg-neutral-950">
             {query.trim() === '' ? (
-              <p className="px-4 py-3 text-sm text-neutral-400">
+              <p className="px-4 py-4 text-sm text-neutral-400">
                 Start typing to search foods.
               </p>
             ) : filteredFoods.length === 0 ? (
-              <p className="px-4 py-3 text-sm text-neutral-400">
+              <p className="px-4 py-4 text-sm text-neutral-400">
                 No foods found.
               </p>
             ) : (
@@ -181,21 +223,73 @@ export default function AddFoodForm({ foods, logDate }: AddFoodFormProps) {
                     key={food.id}
                     type="button"
                     onClick={() => handleSelectFood(food)}
-                    className={`flex w-full flex-col border-b border-neutral-800 px-4 py-3 text-left last:border-b-0 ${
+                    className={`w-full border-b border-neutral-800 px-4 py-4 text-left last:border-b-0 transition ${
                       isSelected
-                        ? 'bg-white text-black'
-                        : 'bg-transparent text-white hover:bg-neutral-900'
+                        ? 'bg-emerald-500/15'
+                        : 'bg-transparent hover:bg-neutral-900'
                     }`}
                   >
-                    <span className="font-medium">{food.name}</span>
-                    <span
-                      className={`text-sm ${
-                        isSelected ? 'text-neutral-800' : 'text-neutral-400'
-                      }`}
-                    >
-                      {food.category ?? 'Uncategorized'} •{' '}
-                      {food.serving_size_grams} g
-                    </span>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-medium text-white">
+                            {food.name}
+                          </span>
+
+                          <span
+                            className={`rounded-full px-2 py-1 text-xs ${
+                              isSelected
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-neutral-800 text-neutral-300'
+                            }`}
+                          >
+                            {getSourceLabel(food)}
+                          </span>
+                        </div>
+
+                        <p className="mt-1 text-sm text-neutral-400">
+                          {food.category ?? 'Uncategorized'}
+                          {food.brand_name ? ` • ${food.brand_name}` : ''}
+                        </p>
+                      </div>
+
+                      <div className="text-right text-sm text-neutral-300">
+                        <p>{formatNumber(food.calories, 0)} cal</p>
+                        <p className="text-xs text-neutral-500">
+                          per {formatNumber(food.serving_size_grams, 0)}g
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-4 gap-2 text-xs text-neutral-400">
+                      <div className="rounded-lg bg-neutral-900 px-2 py-2">
+                        <p className="text-neutral-500">Protein</p>
+                        <p className="font-medium text-neutral-200">
+                          {formatNumber(food.protein, 1)}g
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg bg-neutral-900 px-2 py-2">
+                        <p className="text-neutral-500">Carbs</p>
+                        <p className="font-medium text-neutral-200">
+                          {formatNumber(food.carbs, 1)}g
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg bg-neutral-900 px-2 py-2">
+                        <p className="text-neutral-500">Fat</p>
+                        <p className="font-medium text-neutral-200">
+                          {formatNumber(food.fat, 1)}g
+                        </p>
+                      </div>
+
+                      <div className="rounded-lg bg-neutral-900 px-2 py-2">
+                        <p className="text-neutral-500">Fiber</p>
+                        <p className="font-medium text-neutral-200">
+                          {formatNumber(food.fiber, 1)}g
+                        </p>
+                      </div>
+                    </div>
                   </button>
                 )
               })
@@ -204,31 +298,49 @@ export default function AddFoodForm({ foods, logDate }: AddFoodFormProps) {
         </div>
 
         {selectedFood ? (
-          <div className="rounded-2xl border border-neutral-800 bg-neutral-950 p-4 text-sm text-neutral-300">
-            <p className="font-medium text-white">{selectedFood.name}</p>
-            <p className="mt-2">
-              Base serving: {selectedFood.serving_size_grams} g
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-neutral-300">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="font-medium text-white">{selectedFood.name}</p>
+
+                <p className="mt-1 text-neutral-400">
+                  Selected from {getSourceLabel(selectedFood)}
+                </p>
+              </div>
+
+              <span className="rounded-full bg-emerald-500 px-3 py-1 text-xs font-medium text-white">
+                Selected
+              </span>
+            </div>
+
+            <p className="mt-3">
+              Base serving: {formatNumber(selectedFood.serving_size_grams, 0)} g
             </p>
+
             <p className="mt-1">
-              {selectedFood.calories} cal • {selectedFood.protein} P •{' '}
-              {selectedFood.carbs} C • {selectedFood.fat} F
+              {formatNumber(selectedFood.calories, 0)} cal •{' '}
+              {formatNumber(selectedFood.protein, 1)}g protein •{' '}
+              {formatNumber(selectedFood.carbs, 1)}g carbs •{' '}
+              {formatNumber(selectedFood.fat, 1)}g fat
             </p>
           </div>
         ) : null}
 
         <div>
           <label className="mb-2 block text-sm text-neutral-300">Grams</label>
+
           <input
             type="number"
             min="1"
             step="0.01"
             value={grams}
             onChange={(e) => setGrams(e.target.value)}
-            className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 outline-none focus:border-white"
+            className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 outline-none transition focus:border-emerald-500"
           />
         </div>
 
         {error ? <p className="text-sm text-red-400">{error}</p> : null}
+
         {success ? <p className="text-sm text-emerald-400">{success}</p> : null}
 
         <button
