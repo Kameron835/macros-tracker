@@ -12,6 +12,25 @@ type FoodOption = {
   protein: number
   carbs: number
   fat: number
+  fiber: number | null
+  sugar: number | null
+  sodium: number | null
+  potassium: number | null
+  calcium: number | null
+  iron: number | null
+  magnesium: number | null
+  zinc: number | null
+  vitamin_a: number | null
+  vitamin_c: number | null
+  vitamin_d: number | null
+  vitamin_b12: number | null
+  cholesterol: number | null
+  saturated_fat: number | null
+  trans_fat: number | null
+  source: string | null
+  source_id: string | null
+  brand_name: string | null
+  barcode: string | null
 }
 
 type AddFoodFormProps = {
