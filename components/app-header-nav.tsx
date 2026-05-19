@@ -32,7 +32,8 @@ export default function AppHeaderNav({ isSignedIn }: AppHeaderNavProps) {
   }
 
   return (
-    <div className="flex items-center gap-3">
+    // 👇 Add `relative` here so the dropdown anchors to this element
+    <div className="relative flex items-center gap-3">
       <Link
         href="/foods/barcode"
         className="rounded-xl border border-emerald-500 px-4 py-2 text-sm font-medium text-emerald-300"
@@ -49,7 +50,8 @@ export default function AppHeaderNav({ isSignedIn }: AppHeaderNavProps) {
       </button>
 
       {isOpen ? (
-        <div className="absolute left-6 right-6 top-28 z-50 rounded-2xl border border-neutral-800 bg-neutral-950 p-3 shadow-2xl">
+        // 👇 Replace `left-6 right-6 top-28` with `right-0 top-full mt-2`
+        <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl border border-neutral-800 bg-neutral-950 p-3 shadow-2xl">
           {navLinks.map((link) => (
             <Link
               key={link.href}
