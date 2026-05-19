@@ -116,9 +116,7 @@ export default function BarcodeScanner({ onDetected }: BarcodeScannerProps) {
 
       <div
         id={scannerRegionId}
-        className={`mt-4 overflow-hidden rounded-xl border border-neutral-800 ${
-          isScanning ? 'block' : 'hidden'
-        }`}
+        className="mt-4 min-h-[220px] overflow-hidden rounded-xl border border-neutral-800"
       />
 
       {error ? <p className="mt-3 text-sm text-red-400">{error}</p> : null}

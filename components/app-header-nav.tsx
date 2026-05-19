@@ -26,7 +26,7 @@ export default function AppHeaderNav({ isSignedIn }: AppHeaderNavProps) {
   }
 
   return (
-    <div className="relative">
+    <div className="w-full md:w-auto">
       <nav className="hidden items-center gap-6 md:flex">
         {navLinks.map((link) => (
           <Link
@@ -41,17 +41,17 @@ export default function AppHeaderNav({ isSignedIn }: AppHeaderNavProps) {
         <SignOutButton />
       </nav>
 
-      <button
-        type="button"
-        onClick={() => setIsOpen((value) => !value)}
-        className="inline-flex items-center rounded-xl border border-neutral-700 px-4 py-2 text-sm font-medium text-neutral-300 transition hover:border-emerald-500 hover:text-emerald-300 md:hidden"
-      >
-        Menu
-      </button>
+      <div className="md:hidden">
+        <button
+          type="button"
+          onClick={() => setIsOpen((value) => !value)}
+          className="w-full rounded-xl border border-emerald-500/40 px-4 py-3 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/10"
+        >
+          Menu
+        </button>
 
-      {isOpen ? (
-        <div className="absolute right-0 top-12 z-50 w-56 rounded-2xl border border-neutral-800 bg-neutral-950 p-3 shadow-2xl md:hidden">
-          <div className="space-y-1">
+        {isOpen ? (
+          <div className="mt-3 rounded-2xl border border-neutral-800 bg-neutral-950 p-3 shadow-2xl">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
@@ -63,12 +63,12 @@ export default function AppHeaderNav({ isSignedIn }: AppHeaderNavProps) {
               </Link>
             ))}
 
-            <div className="pt-2">
+            <div className="mt-2 border-t border-neutral-800 pt-3">
               <SignOutButton />
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </div>
   )
 }

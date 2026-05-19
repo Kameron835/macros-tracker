@@ -12,14 +12,14 @@ export default async function AppHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-neutral-800 bg-neutral-950/95 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
-        <Link href="/" className="flex shrink-0 items-center">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-4 md:flex-row md:items-center md:justify-between">
+        <Link href="/" className="flex items-center">
           <Image
             src="/brand/header-logo.svg"
             alt="Strong Man Dam's Nutrition"
             width={260}
             height={100}
-            className="h-20 w-auto object-contain sm:h-24"
+            className="h-20 w-auto object-contain"
             priority
           />
         </Link>
