@@ -12,17 +12,26 @@ export default async function AppHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-neutral-800 bg-neutral-950/95 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
         <Link href="/" className="flex shrink-0 items-center">
           <Image
             src="/brand/header-logo.svg"
             alt="Strong Man Dam's Nutrition"
             width={220}
             height={90}
-            className="h-12 w-auto max-w-[160px] object-contain sm:h-20 sm:max-w-none"
+            className="h-16 w-auto object-contain sm:h-20"
             priority
           />
         </Link>
+
+        {user ? (
+          <Link
+            href="/foods/barcode"
+            className="rounded-xl border border-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-300 lg:hidden"
+          >
+            Barcode
+          </Link>
+        ) : null}
 
         <AppHeaderNav isSignedIn={!!user} />
       </div>
