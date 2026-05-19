@@ -44,6 +44,12 @@ export default function AppHeaderNav({ isSignedIn }: AppHeaderNavProps) {
       >
         Manage Foods
       </Link>
+      <Link
+        href="/foods/barcode"
+        className="rounded-xl border border-neutral-700 px-4 py-2 text-sm font-medium text-neutral-300 transition hover:border-emerald-500 hover:text-emerald-300"
+>
+  Barcode Lookup
+</Link>
 
       <SignOutButton />
     </nav>
