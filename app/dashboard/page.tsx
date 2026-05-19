@@ -44,6 +44,13 @@ type TodayItem = {
   protein: number
   carbs: number
   fat: number
+  fiber: number
+  sugar: number
+  sodium: number
+  potassium: number
+  calcium: number
+  iron: number
+  vitamin_c: number
   meal_type: MealSection | string | null
   foods: {
     name: string
@@ -72,6 +79,7 @@ export default async function DashboardPage({
 
   const params = (await searchParams) ?? {}
   const todayString = new Date().toISOString().split('T')[0]
+
   const selectedDate =
     params.date && /^\d{4}-\d{2}-\d{2}$/.test(params.date)
       ? params.date
@@ -81,9 +89,7 @@ export default async function DashboardPage({
   const nextDate = shiftDate(selectedDate, 1)
 
   const displayName =
-    user.user_metadata?.display_name ||
-    user.email?.split('@')[0] ||
-    'User'
+    user.user_metadata?.display_name || user.email?.split('@')[0] || 'User'
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
@@ -103,34 +109,34 @@ export default async function DashboardPage({
   const { data: foods, error: foodsError } = await supabase
     .from('foods')
     .select(`
-    id,
-    name,
-    category,
-   serving_size_grams,
-   calories,
-   protein,
-    carbs,
-    fat,
-    fiber,
-    sugar,
-    sodium,
-    potassium,
-    calcium,
-    iron,
-    magnesium,
-    zinc,
-    vitamin_a,
-   vitamin_c,
-    vitamin_d,
-   vitamin_b12,
-    cholesterol,
-   saturated_fat,
-   trans_fat,
-    source,
-    source_id,
-   brand_name,
-    barcode
-  `)
+      id,
+      name,
+      category,
+      serving_size_grams,
+      calories,
+      protein,
+      carbs,
+      fat,
+      fiber,
+      sugar,
+      sodium,
+      potassium,
+      calcium,
+      iron,
+      magnesium,
+      zinc,
+      vitamin_a,
+      vitamin_c,
+      vitamin_d,
+      vitamin_b12,
+      cholesterol,
+      saturated_fat,
+      trans_fat,
+      source,
+      source_id,
+      brand_name,
+      barcode
+    `)
     .order('name', { ascending: true })
 
   if (foodsError) {
@@ -153,6 +159,14 @@ export default async function DashboardPage({
   let totalCarbs = 0
   let totalFat = 0
 
+  let totalFiber = 0
+  let totalSugar = 0
+  let totalSodium = 0
+  let totalPotassium = 0
+  let totalCalcium = 0
+  let totalIron = 0
+  let totalVitaminC = 0
+
   let selectedItemsWithFoods: TodayItem[] = []
 
   if (selectedLog?.id) {
@@ -165,6 +179,13 @@ export default async function DashboardPage({
         protein,
         carbs,
         fat,
+        fiber,
+        sugar,
+        sodium,
+        potassium,
+        calcium,
+        iron,
+        vitamin_c,
         meal_type,
         foods (
           name,
@@ -178,14 +199,21 @@ export default async function DashboardPage({
       throw new Error(selectedItemsError.message)
     }
 
-    selectedItemsWithFoods =
-     (selectedItems as unknown as TodayItem[]) ?? []
+    selectedItemsWithFoods = (selectedItems as unknown as TodayItem[]) ?? []
 
     for (const item of selectedItemsWithFoods) {
       totalCalories += Number(item.calories ?? 0)
       totalProtein += Number(item.protein ?? 0)
       totalCarbs += Number(item.carbs ?? 0)
       totalFat += Number(item.fat ?? 0)
+
+      totalFiber += Number(item.fiber ?? 0)
+      totalSugar += Number(item.sugar ?? 0)
+      totalSodium += Number(item.sodium ?? 0)
+      totalPotassium += Number(item.potassium ?? 0)
+      totalCalcium += Number(item.calcium ?? 0)
+      totalIron += Number(item.iron ?? 0)
+      totalVitaminC += Number(item.vitamin_c ?? 0)
     }
   }
 
@@ -242,6 +270,51 @@ export default async function DashboardPage({
     },
   ]
 
+  const microCards = [
+    {
+      label: 'Fiber',
+      value: totalFiber,
+      decimals: 1,
+      unit: 'g',
+    },
+    {
+      label: 'Sugar',
+      value: totalSugar,
+      decimals: 1,
+      unit: 'g',
+    },
+    {
+      label: 'Sodium',
+      value: totalSodium,
+      decimals: 0,
+      unit: 'mg',
+    },
+    {
+      label: 'Potassium',
+      value: totalPotassium,
+      decimals: 0,
+      unit: 'mg',
+    },
+    {
+      label: 'Calcium',
+      value: totalCalcium,
+      decimals: 0,
+      unit: 'mg',
+    },
+    {
+      label: 'Iron',
+      value: totalIron,
+      decimals: 1,
+      unit: 'mg',
+    },
+    {
+      label: 'Vitamin C',
+      value: totalVitaminC,
+      decimals: 1,
+      unit: 'mg',
+    },
+  ]
+
   const isToday = selectedDate === todayString
 
   return (
@@ -265,14 +338,14 @@ export default async function DashboardPage({
             <div className="flex flex-wrap gap-3">
               <Link
                 href="/goals"
-                className="rounded-xl border border-neutral-700 px-4 py-2 text-sm font-medium text-white transition hover:border-neutral-500"
+                className="rounded-xl border border-emerald-500/40 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:border-emerald-500 hover:bg-emerald-500/10"
               >
                 Edit goals
               </Link>
 
               <Link
                 href="/foods/new"
-                className="rounded-xl border border-neutral-700 px-4 py-2 text-sm font-medium text-white transition hover:border-neutral-500"
+                className="rounded-xl border border-emerald-500/40 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:border-emerald-500 hover:bg-emerald-500/10"
               >
                 Create custom food
               </Link>
@@ -291,7 +364,7 @@ export default async function DashboardPage({
               <div className="flex flex-wrap gap-3">
                 <Link
                   href={`/dashboard?date=${previousDate}`}
-                  className="rounded-xl border border-neutral-700 px-4 py-2 text-sm font-medium text-white transition hover:border-neutral-500"
+                  className="rounded-xl border border-emerald-500/40 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:border-emerald-500 hover:bg-emerald-500/10"
                 >
                   Previous day
                 </Link>
@@ -299,7 +372,7 @@ export default async function DashboardPage({
                 {!isToday ? (
                   <Link
                     href="/dashboard"
-                    className="rounded-xl border border-neutral-700 px-4 py-2 text-sm font-medium text-white transition hover:border-neutral-500"
+                    className="rounded-xl border border-emerald-500/40 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:border-emerald-500 hover:bg-emerald-500/10"
                   >
                     Today
                   </Link>
@@ -307,7 +380,7 @@ export default async function DashboardPage({
 
                 <Link
                   href={`/dashboard?date=${nextDate}`}
-                  className="rounded-xl border border-neutral-700 px-4 py-2 text-sm font-medium text-white transition hover:border-neutral-500"
+                  className="rounded-xl border border-emerald-500/40 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:border-emerald-500 hover:bg-emerald-500/10"
                 >
                   Next day
                 </Link>
@@ -345,7 +418,7 @@ export default async function DashboardPage({
 
                 <div className="mt-4 h-3 overflow-hidden rounded-full bg-neutral-800">
                   <div
-                    className="h-full rounded-full bg-white transition-all"
+                    className="h-full rounded-full bg-emerald-500 transition-all"
                     style={{ width: `${percent}%` }}
                   />
                 </div>
@@ -356,6 +429,29 @@ export default async function DashboardPage({
               </div>
             )
           })}
+        </div>
+
+        <div className="mt-8 rounded-3xl border border-neutral-800 bg-neutral-900 p-6">
+          <h2 className="text-2xl font-semibold">Micronutrients</h2>
+          <p className="mt-2 text-sm text-neutral-400">
+            Key micronutrient totals for the selected day.
+          </p>
+
+          <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+            {microCards.map((card) => (
+              <div
+                key={card.label}
+                className="rounded-2xl border border-neutral-800 bg-neutral-950 p-6"
+              >
+                <p className="text-sm text-neutral-400">{card.label}</p>
+
+                <p className="mt-3 text-2xl font-semibold">
+                  {formatNumber(card.value, card.decimals)}
+                  {card.unit}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="mt-8">
@@ -447,6 +543,7 @@ export default async function DashboardPage({
                               <th className="px-4 py-2">Actions</th>
                             </tr>
                           </thead>
+
                           <tbody>
                             {items.map((item) => (
                               <tr
@@ -456,35 +553,42 @@ export default async function DashboardPage({
                                 <td className="rounded-l-2xl px-4 py-3 font-medium text-white">
                                   {item.foods?.name ?? 'Unknown food'}
                                 </td>
+
                                 <td className="px-4 py-3 text-neutral-300">
                                   {item.foods?.category ?? '-'}
                                 </td>
+
                                 <td className="px-4 py-3 text-neutral-300">
                                   {formatNumber(Number(item.grams), 2)} g
                                 </td>
+
                                 <td className="px-4 py-3 text-neutral-300">
                                   {formatNumber(Number(item.calories), 0)}
                                 </td>
+
                                 <td className="px-4 py-3 text-neutral-300">
                                   {formatNumber(Number(item.protein), 1)} g
                                 </td>
+
                                 <td className="px-4 py-3 text-neutral-300">
                                   {formatNumber(Number(item.carbs), 1)} g
                                 </td>
+
                                 <td className="px-4 py-3 text-neutral-300">
                                   {formatNumber(Number(item.fat), 1)} g
                                 </td>
-                                <td className="rounded-r-2xl px-4 py-3 text-neutral-300">
-                                   <div className="flex flex-wrap gap-2">
-                                     <Link
-                                     href={`/entries/${item.id}`}
-                                     className="rounded-lg border border-neutral-600 px-3 py-1.5 text-sm font-medium text-white transition hover:border-neutral-400"
-                                     >
-                                      Edit
-                                     </Link>
 
-                                     <RemoveFoodButton itemId={item.id} />
-                                   </div>
+                                <td className="rounded-r-2xl px-4 py-3 text-neutral-300">
+                                  <div className="flex flex-wrap gap-2">
+                                    <Link
+                                      href={`/entries/${item.id}`}
+                                      className="rounded-lg border border-emerald-500 px-3 py-1.5 text-sm font-medium text-emerald-400 transition hover:bg-emerald-500 hover:text-white"
+                                    >
+                                      Edit
+                                    </Link>
+
+                                    <RemoveFoodButton itemId={item.id} />
+                                  </div>
                                 </td>
                               </tr>
                             ))}
