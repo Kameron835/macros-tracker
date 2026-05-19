@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import AddRecipeIngredientForm from '@/components/recipes/add-recipe-ingredient-form'
 import LogRecipeForm from '@/components/recipes/log-recipe-form'
+import RemoveRecipeIngredientButton from '@/components/recipes/remove-recipe-ingredient-button'
 
 function formatNumber(value: number, decimals = 0) {
   return new Intl.NumberFormat('en-US', {
@@ -285,6 +286,11 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
                           {formatNumber(ingredient.carbs, 1)}C /{' '}
                           {formatNumber(ingredient.fat, 1)}F
                         </p>
+                         <div className="mt-3">
+                            <RemoveRecipeIngredientButton
+                             ingredientId={ingredient.id}
+                             />
+                        </div>
                       </div>
                     </div>
                   </div>

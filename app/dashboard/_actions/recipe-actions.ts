@@ -410,3 +410,50 @@ export async function logRecipeToMeal(input: LogRecipeToMealInput) {
   revalidatePath(`/dashboard?date=${input.logDate}`)
   revalidatePath(`/recipes/${input.recipeId}`)
 }
+export async function removeRecipeIngredient(ingredientId: number) {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error('You must be logged in.')
+  }
+
+  const { data: ingredient, error: ingredientError } = await supabase
+    .from('recipe_ingredients')
+    .select(`
+      id,
+      recipe_id,
+      recipes (
+        id,
+        user_id
+      )
+    `)
+    .eq('id', ingredientId)
+    .single()
+
+  if (ingredientError || !ingredient) {
+    throw new Error(ingredientError?.message || 'Ingredient not found.')
+  }
+
+  const recipe = Array.isArray(ingredient.recipes)
+    ? ingredient.recipes[0]
+    : ingredient.recipes
+
+  if (!recipe || recipe.user_id !== user.id) {
+    throw new Error('You can only remove ingredients from your own recipes.')
+  }
+
+  const { error } = await supabase
+    .from('recipe_ingredients')
+    .delete()
+    .eq('id', ingredientId)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  revalidatePath(`/recipes/${ingredient.recipe_id}`)
+}
