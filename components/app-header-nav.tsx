@@ -15,6 +15,7 @@ const navLinks = [
   { href: '/foods/new', label: 'New Food' },
   { href: '/foods/manage', label: 'Manage Foods' },
   { href: '/foods/barcode', label: 'Barcode Lookup' },
+  { href: '/recipes/new', label: 'New Recipe' },
 ]
 
 export default function AppHeaderNav({ isSignedIn }: AppHeaderNavProps) {
