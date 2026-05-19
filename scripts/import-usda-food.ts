@@ -1,4 +1,6 @@
-import 'dotenv/config'
+import dotenv from 'dotenv'
+
+dotenv.config({ path: '.env.local' })
 import { createClient } from '@supabase/supabase-js'
 
 type FdcSearchFood = {
@@ -17,7 +19,7 @@ type FdcSearchFood = {
 }
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const fdcApiKey = process.env.FDC_API_KEY
 
 if (!supabaseUrl || !supabaseKey || !fdcApiKey) {
@@ -66,7 +68,7 @@ async function searchFoods(query: string, pageSize = 25) {
   url.searchParams.set('api_key', fdcApiKey!)
   url.searchParams.set('query', query)
   url.searchParams.set('pageSize', String(pageSize))
-  url.searchParams.set('dataType', 'Foundation,SR Legacy,Survey (FNDDS)')
+  
 
   const response = await fetch(url)
 

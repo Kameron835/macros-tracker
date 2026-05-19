@@ -3,10 +3,12 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 
+type MealType = 'Breakfast' | 'Lunch' | 'Dinner' | 'Snacks'
+
 type AddFoodInput = {
   foodId: number
   grams: number
-  mealType: 'Breakfast' | 'Lunch' | 'Dinner' | 'Snacks'
+  mealType: MealType
   logDate: string
 }
 
@@ -34,8 +36,83 @@ type UpdateCustomFoodInput = {
 type UpdateLoggedEntryInput = {
   itemId: number
   grams: number
-  mealType: 'Breakfast' | 'Lunch' | 'Dinner' | 'Snacks'
+  mealType: MealType
 }
+
+type FoodNutrition = {
+  id: number
+  serving_size_grams: number
+  calories: number | null
+  protein: number | null
+  carbs: number | null
+  fat: number | null
+  fiber: number | null
+  sugar: number | null
+  sodium: number | null
+  potassium: number | null
+  calcium: number | null
+  iron: number | null
+  magnesium: number | null
+  zinc: number | null
+  vitamin_a: number | null
+  vitamin_c: number | null
+  vitamin_d: number | null
+  vitamin_b12: number | null
+  cholesterol: number | null
+  saturated_fat: number | null
+  trans_fat: number | null
+}
+
+function scaleFoodNutrition(food: FoodNutrition, grams: number) {
+  const ratio = grams / Number(food.serving_size_grams)
+
+  return {
+    calories: Number(food.calories ?? 0) * ratio,
+    protein: Number(food.protein ?? 0) * ratio,
+    carbs: Number(food.carbs ?? 0) * ratio,
+    fat: Number(food.fat ?? 0) * ratio,
+
+    fiber: Number(food.fiber ?? 0) * ratio,
+    sugar: Number(food.sugar ?? 0) * ratio,
+    sodium: Number(food.sodium ?? 0) * ratio,
+    potassium: Number(food.potassium ?? 0) * ratio,
+    calcium: Number(food.calcium ?? 0) * ratio,
+    iron: Number(food.iron ?? 0) * ratio,
+    magnesium: Number(food.magnesium ?? 0) * ratio,
+    zinc: Number(food.zinc ?? 0) * ratio,
+    vitamin_a: Number(food.vitamin_a ?? 0) * ratio,
+    vitamin_c: Number(food.vitamin_c ?? 0) * ratio,
+    vitamin_d: Number(food.vitamin_d ?? 0) * ratio,
+    vitamin_b12: Number(food.vitamin_b12 ?? 0) * ratio,
+    cholesterol: Number(food.cholesterol ?? 0) * ratio,
+    saturated_fat: Number(food.saturated_fat ?? 0) * ratio,
+    trans_fat: Number(food.trans_fat ?? 0) * ratio,
+  }
+}
+
+const foodNutritionSelect = `
+  id,
+  serving_size_grams,
+  calories,
+  protein,
+  carbs,
+  fat,
+  fiber,
+  sugar,
+  sodium,
+  potassium,
+  calcium,
+  iron,
+  magnesium,
+  zinc,
+  vitamin_a,
+  vitamin_c,
+  vitamin_d,
+  vitamin_b12,
+  cholesterol,
+  saturated_fat,
+  trans_fat
+`
 
 export async function addFoodToToday(input: AddFoodInput) {
   const supabase = await createClient()
@@ -93,7 +170,7 @@ export async function addFoodToToday(input: AddFoodInput) {
 
   const { data: food, error: foodError } = await supabase
     .from('foods')
-    .select('id, serving_size_grams, calories, protein, carbs, fat')
+    .select(foodNutritionSelect)
     .eq('id', input.foodId)
     .single()
 
@@ -101,12 +178,10 @@ export async function addFoodToToday(input: AddFoodInput) {
     throw new Error(foodError?.message || 'Food not found.')
   }
 
-  const ratio = input.grams / Number(food.serving_size_grams)
-
-  const calories = Number(food.calories) * ratio
-  const protein = Number(food.protein) * ratio
-  const carbs = Number(food.carbs) * ratio
-  const fat = Number(food.fat) * ratio
+  const scaledNutrition = scaleFoodNutrition(
+    food as unknown as FoodNutrition,
+    input.grams
+  )
 
   const { error: itemInsertError } = await supabase
     .from('daily_log_items')
@@ -114,11 +189,8 @@ export async function addFoodToToday(input: AddFoodInput) {
       daily_log_id: dailyLogId,
       food_id: food.id,
       grams: input.grams,
-      calories,
-      protein,
-      carbs,
-      fat,
       meal_type: input.mealType,
+      ...scaledNutrition,
     })
 
   if (itemInsertError) {
@@ -162,9 +234,10 @@ export async function updateLoggedEntry(input: UpdateLoggedEntryInput) {
     throw new Error(itemError?.message || 'Log entry not found.')
   }
 
-  const dailyLog = Array.isArray(item.daily_logs)
-    ? item.daily_logs[0]
-    : item.daily_logs
+  const dailyLog = item.daily_logs as unknown as {
+    user_id: string
+    log_date: string
+  } | null
 
   if (!dailyLog || dailyLog.user_id !== user.id) {
     throw new Error('You can only edit your own log entries.')
@@ -172,7 +245,7 @@ export async function updateLoggedEntry(input: UpdateLoggedEntryInput) {
 
   const { data: food, error: foodError } = await supabase
     .from('foods')
-    .select('id, serving_size_grams, calories, protein, carbs, fat')
+    .select(foodNutritionSelect)
     .eq('id', item.food_id)
     .single()
 
@@ -180,22 +253,17 @@ export async function updateLoggedEntry(input: UpdateLoggedEntryInput) {
     throw new Error(foodError?.message || 'Food not found.')
   }
 
-  const ratio = input.grams / Number(food.serving_size_grams)
-
-  const calories = Number(food.calories) * ratio
-  const protein = Number(food.protein) * ratio
-  const carbs = Number(food.carbs) * ratio
-  const fat = Number(food.fat) * ratio
+  const scaledNutrition = scaleFoodNutrition(
+    food as unknown as FoodNutrition,
+    input.grams
+  )
 
   const { error: updateError } = await supabase
     .from('daily_log_items')
     .update({
       grams: input.grams,
       meal_type: input.mealType,
-      calories,
-      protein,
-      carbs,
-      fat,
+      ...scaledNutrition,
     })
     .eq('id', input.itemId)
 
@@ -237,8 +305,9 @@ export async function removeFoodFromToday(itemId: number) {
   }
 
   const dailyLog = item.daily_logs as unknown as { user_id: string } | null
-    const ownerId = dailyLog?.user_id
-    
+
+  const ownerId = dailyLog?.user_id
+
   if (ownerId !== user.id) {
     throw new Error('You can only remove your own food entries.')
   }
@@ -284,19 +353,33 @@ export async function createCustomFood(input: CreateCustomFoodInput) {
     throw new Error('Please enter valid food values.')
   }
 
-  const { error } = await supabase
-    .from('foods')
-    .insert({
-      name,
-      category: category || 'Custom',
-      serving_size_grams: input.servingSizeGrams,
-      calories: input.calories,
-      protein: input.protein,
-      carbs: input.carbs,
-      fat: input.fat,
-      user_id: user.id,
-      is_custom: true,
-    })
+  const { error } = await supabase.from('foods').insert({
+    name,
+    category: category || 'Custom',
+    serving_size_grams: input.servingSizeGrams,
+    calories: input.calories,
+    protein: input.protein,
+    carbs: input.carbs,
+    fat: input.fat,
+    fiber: 0,
+    sugar: 0,
+    sodium: 0,
+    potassium: 0,
+    calcium: 0,
+    iron: 0,
+    magnesium: 0,
+    zinc: 0,
+    vitamin_a: 0,
+    vitamin_c: 0,
+    vitamin_d: 0,
+    vitamin_b12: 0,
+    cholesterol: 0,
+    saturated_fat: 0,
+    trans_fat: 0,
+    user_id: user.id,
+    is_custom: true,
+    source: 'custom',
+  })
 
   if (error) {
     throw new Error(error.message)
@@ -398,10 +481,7 @@ export async function deleteCustomFood(foodId: number) {
     throw new Error('You can only delete your own custom foods.')
   }
 
-  const { error } = await supabase
-    .from('foods')
-    .delete()
-    .eq('id', foodId)
+  const { error } = await supabase.from('foods').delete().eq('id', foodId)
 
   if (error) {
     throw new Error(error.message)
