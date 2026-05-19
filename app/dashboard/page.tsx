@@ -102,9 +102,35 @@ export default async function DashboardPage({
 
   const { data: foods, error: foodsError } = await supabase
     .from('foods')
-    .select(
-      'id, name, category, serving_size_grams, calories, protein, carbs, fat'
-    )
+    .select(`
+    id,
+    name,
+    category,
+   serving_size_grams,
+   calories,
+   protein,
+    carbs,
+    fat,
+    fiber,
+    sugar,
+    sodium,
+    potassium,
+    calcium,
+    iron,
+    magnesium,
+    zinc,
+    vitamin_a,
+   vitamin_c,
+    vitamin_d,
+   vitamin_b12,
+    cholesterol,
+   saturated_fat,
+   trans_fat,
+    source,
+    source_id,
+   brand_name,
+    barcode
+  `)
     .order('name', { ascending: true })
 
   if (foodsError) {
