@@ -29,7 +29,9 @@ export default function AppHeaderNav({ isSignedIn }: AppHeaderNavProps) {
   // Prevent body scroll when menu is open
   useEffect(() => {
     document.body.style.overflow = isOpen ? 'hidden' : ''
-    return () => { document.body.style.overflow = '' }
+    return () => {
+      document.body.style.overflow = ''
+    }
   }, [isOpen])
 
   const hideNav =
@@ -65,9 +67,8 @@ export default function AppHeaderNav({ isSignedIn }: AppHeaderNavProps) {
             onClick={() => setIsOpen(false)}
           />
 
-          {/* Drawer panel — slides in from the top, always visible */}
+          {/* Drawer panel anchored to top of viewport */}
           <div className="fixed left-0 right-0 top-0 z-50 rounded-b-2xl border-b border-neutral-800 bg-neutral-950 p-4 shadow-2xl">
-            {/* Close row */}
             <div className="mb-4 flex items-center justify-between">
               <span className="text-sm font-medium text-neutral-400">Navigation</span>
               <button
