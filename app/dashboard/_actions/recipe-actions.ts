@@ -11,6 +11,13 @@ type CreateRecipeInput = {
   sourceUrl?: string
 }
 
+type AddRecipeIngredientInput = {
+  recipeId: number
+  foodId: number
+  grams: number
+  notes?: string
+}
+
 export async function createRecipe(input: CreateRecipeInput) {
   const supabase = await createClient()
 
@@ -50,6 +57,54 @@ export async function createRecipe(input: CreateRecipeInput) {
   }
 
   revalidatePath('/recipes')
+  revalidatePath('/recipes/new')
 
   return recipe.id as number
+}
+
+export async function addRecipeIngredient(input: AddRecipeIngredientInput) {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error('You must be logged in.')
+  }
+
+  if (!input.recipeId || !input.foodId) {
+    throw new Error('Missing recipe or food.')
+  }
+
+  if (!input.grams || input.grams <= 0) {
+    throw new Error('Ingredient grams must be greater than zero.')
+  }
+
+  const { data: recipe, error: recipeError } = await supabase
+    .from('recipes')
+    .select('id, user_id')
+    .eq('id', input.recipeId)
+    .single()
+
+  if (recipeError || !recipe) {
+    throw new Error(recipeError?.message || 'Recipe not found.')
+  }
+
+  if (recipe.user_id !== user.id) {
+    throw new Error('You can only edit your own recipes.')
+  }
+
+  const { error } = await supabase.from('recipe_ingredients').insert({
+    recipe_id: input.recipeId,
+    food_id: input.foodId,
+    grams: input.grams,
+    notes: input.notes?.trim() || null,
+  })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  revalidatePath(`/recipes/${input.recipeId}`)
 }
