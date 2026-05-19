@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { addFoodToToday } from '@/app/dashboard/_actions/food-actions'
+import FavoriteFoodButton from '@/components/dashboard/favorite-food-button'
 
 type FoodOption = {
   id: number
@@ -35,6 +36,8 @@ type FoodOption = {
 
 type AddFoodFormProps = {
   foods: FoodOption[]
+  favoriteFoods: FoodOption[]
+  favoriteFoodIds: number[]
   recentFoods: FoodOption[]
   logDate: string
 }
@@ -64,23 +67,23 @@ function FoodResultCard({
   food,
   isSelected,
   badge,
+  isFavorite,
   onSelect,
 }: {
   food: FoodOption
   isSelected: boolean
   badge: string
+  isFavorite: boolean
   onSelect: () => void
 }) {
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={`w-full border-b border-neutral-800 px-4 py-4 text-left last:border-b-0 transition ${
+    <div
+      className={`border-b border-neutral-800 px-4 py-4 last:border-b-0 transition ${
         isSelected ? 'bg-emerald-500/15' : 'bg-transparent hover:bg-neutral-900'
       }`}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+      <div className="flex items-start justify-between gap-4">
+        <button type="button" onClick={onSelect} className="flex-1 text-left">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium text-white">{food.name}</span>
 
@@ -103,61 +106,75 @@ function FoodResultCard({
             {food.category ?? 'Uncategorized'}
             {food.brand_name ? ` • ${food.brand_name}` : ''}
           </p>
-        </div>
 
-        <div className="text-right text-sm text-neutral-300">
-          <p>{formatNumber(food.calories, 0)} cal</p>
-          <p className="text-xs text-neutral-500">
-            per {formatNumber(food.serving_size_grams, 0)}g
-          </p>
+          <div className="mt-3 grid grid-cols-4 gap-2 text-xs text-neutral-400">
+            <div className="rounded-lg bg-neutral-900 px-2 py-2">
+              <p className="text-neutral-500">Protein</p>
+              <p className="font-medium text-neutral-200">
+                {formatNumber(food.protein, 1)}g
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-neutral-900 px-2 py-2">
+              <p className="text-neutral-500">Carbs</p>
+              <p className="font-medium text-neutral-200">
+                {formatNumber(food.carbs, 1)}g
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-neutral-900 px-2 py-2">
+              <p className="text-neutral-500">Fat</p>
+              <p className="font-medium text-neutral-200">
+                {formatNumber(food.fat, 1)}g
+              </p>
+            </div>
+
+            <div className="rounded-lg bg-neutral-900 px-2 py-2">
+              <p className="text-neutral-500">Fiber</p>
+              <p className="font-medium text-neutral-200">
+                {formatNumber(food.fiber, 1)}g
+              </p>
+            </div>
+          </div>
+        </button>
+
+        <div className="flex flex-col items-end gap-3">
+          <div className="text-right text-sm text-neutral-300">
+            <p>{formatNumber(food.calories, 0)} cal</p>
+
+            <p className="text-xs text-neutral-500">
+              per {formatNumber(food.serving_size_grams, 0)}g
+            </p>
+          </div>
+
+          <FavoriteFoodButton
+            foodId={food.id}
+            isFavorite={isFavorite}
+          />
         </div>
       </div>
-
-      <div className="mt-3 grid grid-cols-4 gap-2 text-xs text-neutral-400">
-        <div className="rounded-lg bg-neutral-900 px-2 py-2">
-          <p className="text-neutral-500">Protein</p>
-          <p className="font-medium text-neutral-200">
-            {formatNumber(food.protein, 1)}g
-          </p>
-        </div>
-
-        <div className="rounded-lg bg-neutral-900 px-2 py-2">
-          <p className="text-neutral-500">Carbs</p>
-          <p className="font-medium text-neutral-200">
-            {formatNumber(food.carbs, 1)}g
-          </p>
-        </div>
-
-        <div className="rounded-lg bg-neutral-900 px-2 py-2">
-          <p className="text-neutral-500">Fat</p>
-          <p className="font-medium text-neutral-200">
-            {formatNumber(food.fat, 1)}g
-          </p>
-        </div>
-
-        <div className="rounded-lg bg-neutral-900 px-2 py-2">
-          <p className="text-neutral-500">Fiber</p>
-          <p className="font-medium text-neutral-200">
-            {formatNumber(food.fiber, 1)}g
-          </p>
-        </div>
-      </div>
-    </button>
+    </div>
   )
 }
 
 export default function AddFoodForm({
   foods,
+  favoriteFoods,
+  favoriteFoodIds,
   recentFoods,
   logDate,
 }: AddFoodFormProps) {
   const [query, setQuery] = useState('')
   const [selectedFoodId, setSelectedFoodId] = useState<number | null>(null)
+
   const [mealType, setMealType] =
     useState<(typeof mealOptions)[number]>('Breakfast')
+
   const [grams, setGrams] = useState('100')
+
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+
   const [isPending, startTransition] = useTransition()
 
   const filteredFoods = useMemo(() => {
@@ -199,6 +216,7 @@ export default function AddFoodForm({
 
   const selectedFood =
     foods.find((food) => food.id === selectedFoodId) ??
+    favoriteFoods.find((food) => food.id === selectedFoodId) ??
     recentFoods.find((food) => food.id === selectedFoodId) ??
     null
 
@@ -256,7 +274,7 @@ export default function AddFoodForm({
       <h2 className="text-2xl font-semibold">Add food</h2>
 
       <p className="mt-2 text-sm text-neutral-400">
-        Search your nutrition database or choose a recent food.
+        Search your nutrition database or choose favorites/recent foods.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
@@ -301,32 +319,63 @@ export default function AddFoodForm({
 
           <div className="max-h-96 overflow-y-auto rounded-2xl border border-neutral-800 bg-neutral-950">
             {query.trim() === '' ? (
-              recentFoods.length === 0 ? (
-                <p className="px-4 py-4 text-sm text-neutral-400">
-                  Start typing to search foods.
-                </p>
-              ) : (
-                <div>
-                  <div className="border-b border-neutral-800 px-4 py-3">
-                    <p className="text-sm font-medium text-white">
-                      Recent foods
-                    </p>
-                    <p className="text-xs text-neutral-500">
-                      Quickly add foods you have logged before.
-                    </p>
-                  </div>
+              <>
+                {favoriteFoods.length > 0 ? (
+                  <div>
+                    <div className="border-b border-neutral-800 px-4 py-3">
+                      <p className="text-sm font-medium text-white">
+                        Favorite foods
+                      </p>
 
-                  {recentFoods.map((food) => (
-                    <FoodResultCard
-                      key={food.id}
-                      food={food}
-                      badge="Recent"
-                      isSelected={selectedFoodId === food.id}
-                      onSelect={() => handleSelectFood(food)}
-                    />
-                  ))}
-                </div>
-              )
+                      <p className="text-xs text-neutral-500">
+                        Your pinned foods for quick logging.
+                      </p>
+                    </div>
+
+                    {favoriteFoods.map((food) => (
+                      <FoodResultCard
+                        key={food.id}
+                        food={food}
+                        badge="Pinned"
+                        isFavorite={true}
+                        isSelected={selectedFoodId === food.id}
+                        onSelect={() => handleSelectFood(food)}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+
+                {recentFoods.length > 0 ? (
+                  <div>
+                    <div className="border-b border-neutral-800 px-4 py-3">
+                      <p className="text-sm font-medium text-white">
+                        Recent foods
+                      </p>
+
+                      <p className="text-xs text-neutral-500">
+                        Quickly add foods you have logged before.
+                      </p>
+                    </div>
+
+                    {recentFoods.map((food) => (
+                      <FoodResultCard
+                        key={food.id}
+                        food={food}
+                        badge="Recent"
+                        isFavorite={favoriteFoodIds.includes(food.id)}
+                        isSelected={selectedFoodId === food.id}
+                        onSelect={() => handleSelectFood(food)}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+
+                {favoriteFoods.length === 0 && recentFoods.length === 0 ? (
+                  <p className="px-4 py-4 text-sm text-neutral-400">
+                    Start typing to search foods.
+                  </p>
+                ) : null}
+              </>
             ) : filteredFoods.length === 0 ? (
               <p className="px-4 py-4 text-sm text-neutral-400">
                 No foods found.
@@ -337,6 +386,7 @@ export default function AddFoodForm({
                   key={food.id}
                   food={food}
                   badge="Result"
+                  isFavorite={favoriteFoodIds.includes(food.id)}
                   isSelected={selectedFoodId === food.id}
                   onSelect={() => handleSelectFood(food)}
                 />
@@ -389,7 +439,9 @@ export default function AddFoodForm({
 
         {error ? <p className="text-sm text-red-400">{error}</p> : null}
 
-        {success ? <p className="text-sm text-emerald-400">{success}</p> : null}
+        {success ? (
+          <p className="text-sm text-emerald-400">{success}</p>
+        ) : null}
 
         <button
           type="submit"

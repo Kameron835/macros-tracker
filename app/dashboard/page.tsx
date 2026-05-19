@@ -138,42 +138,66 @@ export default async function DashboardPage({
   const carbGoal = Number(profile?.carb_goal ?? 0)
   const fatGoal = Number(profile?.fat_goal ?? 0)
 
+  const foodSelect = `
+    id,
+    name,
+    category,
+    serving_size_grams,
+    calories,
+    protein,
+    carbs,
+    fat,
+    fiber,
+    sugar,
+    sodium,
+    potassium,
+    calcium,
+    iron,
+    magnesium,
+    zinc,
+    vitamin_a,
+    vitamin_c,
+    vitamin_d,
+    vitamin_b12,
+    cholesterol,
+    saturated_fat,
+    trans_fat,
+    source,
+    source_id,
+    brand_name,
+    barcode
+  `
+
   const { data: foods, error: foodsError } = await supabase
     .from('foods')
-    .select(`
-      id,
-      name,
-      category,
-      serving_size_grams,
-      calories,
-      protein,
-      carbs,
-      fat,
-      fiber,
-      sugar,
-      sodium,
-      potassium,
-      calcium,
-      iron,
-      magnesium,
-      zinc,
-      vitamin_a,
-      vitamin_c,
-      vitamin_d,
-      vitamin_b12,
-      cholesterol,
-      saturated_fat,
-      trans_fat,
-      source,
-      source_id,
-      brand_name,
-      barcode
-    `)
+    .select(foodSelect)
     .order('name', { ascending: true })
 
   if (foodsError) {
     throw new Error(foodsError.message)
   }
+
+  const { data: favoriteRows, error: favoriteRowsError } = await supabase
+    .from('favorite_foods')
+    .select(`
+      food_id,
+      foods (
+        ${foodSelect}
+      )
+    `)
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+
+  if (favoriteRowsError) {
+    throw new Error(favoriteRowsError.message)
+  }
+
+  const favoriteFoods =
+    favoriteRows
+      ?.map((row) => (Array.isArray(row.foods) ? row.foods[0] : row.foods))
+      .filter(Boolean) ?? []
+
+  const favoriteFoodIds = favoriteRows?.map((row) => row.food_id) ?? []
 
   const { data: selectedLog, error: selectedLogError } = await supabase
     .from('daily_logs')
@@ -191,33 +215,7 @@ export default async function DashboardPage({
     .select(`
       food_id,
       foods (
-        id,
-        name,
-        category,
-        serving_size_grams,
-        calories,
-        protein,
-        carbs,
-        fat,
-        fiber,
-        sugar,
-        sodium,
-        potassium,
-        calcium,
-        iron,
-        magnesium,
-        zinc,
-        vitamin_a,
-        vitamin_c,
-        vitamin_d,
-        vitamin_b12,
-        cholesterol,
-        saturated_fat,
-        trans_fat,
-        source,
-        source_id,
-        brand_name,
-        barcode
+        ${foodSelect}
       ),
       daily_logs!inner (
         user_id
@@ -235,6 +233,7 @@ export default async function DashboardPage({
         (food, index, array) =>
           array.findIndex((item) => item?.id === food?.id) === index
       )
+      .filter((food) => !favoriteFoodIds.includes(food?.id ?? -1))
       .slice(0, 8) ?? []
 
   let totalCalories = 0
@@ -588,6 +587,8 @@ export default async function DashboardPage({
         <div className="mt-8">
           <AddFoodForm
             foods={(foods as unknown as FoodOption[]) ?? []}
+            favoriteFoods={(favoriteFoods as unknown as FoodOption[]) ?? []}
+            favoriteFoodIds={favoriteFoodIds}
             recentFoods={(recentFoods as unknown as FoodOption[]) ?? []}
             logDate={selectedDate}
           />
