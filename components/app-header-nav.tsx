@@ -21,7 +21,13 @@ export default function AppHeaderNav({ isSignedIn }: AppHeaderNavProps) {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
 
-  if (!isSignedIn || pathname === '/') {
+  const hideNav =
+    pathname === '/' ||
+    pathname === '/login' ||
+    pathname === '/signup' ||
+    pathname.startsWith('/auth')
+
+  if (hideNav) {
     return null
   }
 
@@ -41,13 +47,13 @@ export default function AppHeaderNav({ isSignedIn }: AppHeaderNavProps) {
         <SignOutButton />
       </nav>
 
-      <div className="md:hidden">
+      <div className="block md:hidden">
         <button
           type="button"
           onClick={() => setIsOpen((value) => !value)}
-          className="w-full rounded-xl border border-emerald-500/40 px-4 py-3 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/10"
+          className="w-full rounded-xl border border-emerald-500/50 px-4 py-3 text-center text-sm font-semibold text-emerald-300"
         >
-          Menu
+          {isOpen ? 'Close Menu' : 'Menu'}
         </button>
 
         {isOpen ? (
@@ -57,7 +63,7 @@ export default function AppHeaderNav({ isSignedIn }: AppHeaderNavProps) {
                 key={link.href}
                 href={link.href}
                 onClick={() => setIsOpen(false)}
-                className="block rounded-xl px-4 py-3 text-sm font-medium text-neutral-300 transition hover:bg-neutral-900 hover:text-emerald-400"
+                className="block rounded-xl px-4 py-3 text-sm font-medium text-neutral-300 hover:bg-neutral-900 hover:text-emerald-400"
               >
                 {link.label}
               </Link>
