@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import AddRecipeIngredientForm from '@/components/recipes/add-recipe-ingredient-form'
+import LogRecipeForm from '@/components/recipes/log-recipe-form'
 
 function formatNumber(value: number, decimals = 0) {
   return new Intl.NumberFormat('en-US', {
@@ -302,12 +303,16 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
             ) : null}
           </div>
 
-          <AddRecipeIngredientForm
-            recipeId={recipeId}
-            foods={(foods ?? []) as unknown as Parameters<
-              typeof AddRecipeIngredientForm
-            >[0]['foods']}
-          />
+          <div className="space-y-6">
+            <LogRecipeForm recipeId={recipeId} />
+
+            <AddRecipeIngredientForm
+              recipeId={recipeId}
+              foods={(foods ?? []) as unknown as Parameters<
+                typeof AddRecipeIngredientForm
+              >[0]['foods']}
+            />
+          </div>
         </div>
 
         <div className="mt-8 rounded-3xl border border-neutral-800 bg-neutral-900 p-6">
