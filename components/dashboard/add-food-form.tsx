@@ -35,6 +35,7 @@ type FoodOption = {
 
 type AddFoodFormProps = {
   foods: FoodOption[]
+  recentFoods: FoodOption[]
   logDate: string
 }
 
@@ -59,7 +60,97 @@ function getSourceLabel(food: FoodOption) {
   return food.source ?? 'Manual'
 }
 
-export default function AddFoodForm({ foods, logDate }: AddFoodFormProps) {
+function FoodResultCard({
+  food,
+  isSelected,
+  badge,
+  onSelect,
+}: {
+  food: FoodOption
+  isSelected: boolean
+  badge: string
+  onSelect: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`w-full border-b border-neutral-800 px-4 py-4 text-left last:border-b-0 transition ${
+        isSelected ? 'bg-emerald-500/15' : 'bg-transparent hover:bg-neutral-900'
+      }`}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium text-white">{food.name}</span>
+
+            <span
+              className={`rounded-full px-2 py-1 text-xs ${
+                isSelected
+                  ? 'bg-emerald-500 text-white'
+                  : 'bg-neutral-800 text-neutral-300'
+              }`}
+            >
+              {badge}
+            </span>
+
+            <span className="rounded-full bg-neutral-800 px-2 py-1 text-xs text-neutral-300">
+              {getSourceLabel(food)}
+            </span>
+          </div>
+
+          <p className="mt-1 text-sm text-neutral-400">
+            {food.category ?? 'Uncategorized'}
+            {food.brand_name ? ` • ${food.brand_name}` : ''}
+          </p>
+        </div>
+
+        <div className="text-right text-sm text-neutral-300">
+          <p>{formatNumber(food.calories, 0)} cal</p>
+          <p className="text-xs text-neutral-500">
+            per {formatNumber(food.serving_size_grams, 0)}g
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-4 gap-2 text-xs text-neutral-400">
+        <div className="rounded-lg bg-neutral-900 px-2 py-2">
+          <p className="text-neutral-500">Protein</p>
+          <p className="font-medium text-neutral-200">
+            {formatNumber(food.protein, 1)}g
+          </p>
+        </div>
+
+        <div className="rounded-lg bg-neutral-900 px-2 py-2">
+          <p className="text-neutral-500">Carbs</p>
+          <p className="font-medium text-neutral-200">
+            {formatNumber(food.carbs, 1)}g
+          </p>
+        </div>
+
+        <div className="rounded-lg bg-neutral-900 px-2 py-2">
+          <p className="text-neutral-500">Fat</p>
+          <p className="font-medium text-neutral-200">
+            {formatNumber(food.fat, 1)}g
+          </p>
+        </div>
+
+        <div className="rounded-lg bg-neutral-900 px-2 py-2">
+          <p className="text-neutral-500">Fiber</p>
+          <p className="font-medium text-neutral-200">
+            {formatNumber(food.fiber, 1)}g
+          </p>
+        </div>
+      </div>
+    </button>
+  )
+}
+
+export default function AddFoodForm({
+  foods,
+  recentFoods,
+  logDate,
+}: AddFoodFormProps) {
   const [query, setQuery] = useState('')
   const [selectedFoodId, setSelectedFoodId] = useState<number | null>(null)
   const [mealType, setMealType] =
@@ -94,6 +185,7 @@ export default function AddFoodForm({ foods, logDate }: AddFoodFormProps) {
       .sort((a, b) => {
         const aName = a.name.toLowerCase()
         const bName = b.name.toLowerCase()
+
         const aStarts = aName.startsWith(trimmed)
         const bStarts = bName.startsWith(trimmed)
 
@@ -106,7 +198,9 @@ export default function AddFoodForm({ foods, logDate }: AddFoodFormProps) {
   }, [foods, query])
 
   const selectedFood =
-    foods.find((food) => food.id === selectedFoodId) ?? null
+    foods.find((food) => food.id === selectedFoodId) ??
+    recentFoods.find((food) => food.id === selectedFoodId) ??
+    null
 
   function handleSearchChange(value: string) {
     setQuery(value)
@@ -162,7 +256,7 @@ export default function AddFoodForm({ foods, logDate }: AddFoodFormProps) {
       <h2 className="text-2xl font-semibold">Add food</h2>
 
       <p className="mt-2 text-sm text-neutral-400">
-        Search your nutrition database and add a serving by grams.
+        Search your nutrition database or choose a recent food.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
@@ -207,92 +301,46 @@ export default function AddFoodForm({ foods, logDate }: AddFoodFormProps) {
 
           <div className="max-h-96 overflow-y-auto rounded-2xl border border-neutral-800 bg-neutral-950">
             {query.trim() === '' ? (
-              <p className="px-4 py-4 text-sm text-neutral-400">
-                Start typing to search foods.
-              </p>
+              recentFoods.length === 0 ? (
+                <p className="px-4 py-4 text-sm text-neutral-400">
+                  Start typing to search foods.
+                </p>
+              ) : (
+                <div>
+                  <div className="border-b border-neutral-800 px-4 py-3">
+                    <p className="text-sm font-medium text-white">
+                      Recent foods
+                    </p>
+                    <p className="text-xs text-neutral-500">
+                      Quickly add foods you have logged before.
+                    </p>
+                  </div>
+
+                  {recentFoods.map((food) => (
+                    <FoodResultCard
+                      key={food.id}
+                      food={food}
+                      badge="Recent"
+                      isSelected={selectedFoodId === food.id}
+                      onSelect={() => handleSelectFood(food)}
+                    />
+                  ))}
+                </div>
+              )
             ) : filteredFoods.length === 0 ? (
               <p className="px-4 py-4 text-sm text-neutral-400">
                 No foods found.
               </p>
             ) : (
-              filteredFoods.map((food) => {
-                const isSelected = selectedFoodId === food.id
-
-                return (
-                  <button
-                    key={food.id}
-                    type="button"
-                    onClick={() => handleSelectFood(food)}
-                    className={`w-full border-b border-neutral-800 px-4 py-4 text-left last:border-b-0 transition ${
-                      isSelected
-                        ? 'bg-emerald-500/15'
-                        : 'bg-transparent hover:bg-neutral-900'
-                    }`}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-medium text-white">
-                            {food.name}
-                          </span>
-
-                          <span
-                            className={`rounded-full px-2 py-1 text-xs ${
-                              isSelected
-                                ? 'bg-emerald-500 text-white'
-                                : 'bg-neutral-800 text-neutral-300'
-                            }`}
-                          >
-                            {getSourceLabel(food)}
-                          </span>
-                        </div>
-
-                        <p className="mt-1 text-sm text-neutral-400">
-                          {food.category ?? 'Uncategorized'}
-                          {food.brand_name ? ` • ${food.brand_name}` : ''}
-                        </p>
-                      </div>
-
-                      <div className="text-right text-sm text-neutral-300">
-                        <p>{formatNumber(food.calories, 0)} cal</p>
-                        <p className="text-xs text-neutral-500">
-                          per {formatNumber(food.serving_size_grams, 0)}g
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 grid grid-cols-4 gap-2 text-xs text-neutral-400">
-                      <div className="rounded-lg bg-neutral-900 px-2 py-2">
-                        <p className="text-neutral-500">Protein</p>
-                        <p className="font-medium text-neutral-200">
-                          {formatNumber(food.protein, 1)}g
-                        </p>
-                      </div>
-
-                      <div className="rounded-lg bg-neutral-900 px-2 py-2">
-                        <p className="text-neutral-500">Carbs</p>
-                        <p className="font-medium text-neutral-200">
-                          {formatNumber(food.carbs, 1)}g
-                        </p>
-                      </div>
-
-                      <div className="rounded-lg bg-neutral-900 px-2 py-2">
-                        <p className="text-neutral-500">Fat</p>
-                        <p className="font-medium text-neutral-200">
-                          {formatNumber(food.fat, 1)}g
-                        </p>
-                      </div>
-
-                      <div className="rounded-lg bg-neutral-900 px-2 py-2">
-                        <p className="text-neutral-500">Fiber</p>
-                        <p className="font-medium text-neutral-200">
-                          {formatNumber(food.fiber, 1)}g
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                )
-              })
+              filteredFoods.map((food) => (
+                <FoodResultCard
+                  key={food.id}
+                  food={food}
+                  badge="Result"
+                  isSelected={selectedFoodId === food.id}
+                  onSelect={() => handleSelectFood(food)}
+                />
+              ))
             )}
           </div>
         </div>

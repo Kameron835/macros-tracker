@@ -39,6 +39,36 @@ const mealSections = ['Breakfast', 'Lunch', 'Dinner', 'Snacks'] as const
 
 type MealSection = (typeof mealSections)[number]
 
+type FoodOption = {
+  id: number
+  name: string
+  category: string | null
+  serving_size_grams: number
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+  fiber: number | null
+  sugar: number | null
+  sodium: number | null
+  potassium: number | null
+  calcium: number | null
+  iron: number | null
+  magnesium: number | null
+  zinc: number | null
+  vitamin_a: number | null
+  vitamin_c: number | null
+  vitamin_d: number | null
+  vitamin_b12: number | null
+  cholesterol: number | null
+  saturated_fat: number | null
+  trans_fat: number | null
+  source: string | null
+  source_id: string | null
+  brand_name: string | null
+  barcode: string | null
+}
+
 type TodayItem = {
   id: number
   grams: number
@@ -80,7 +110,6 @@ export default async function DashboardPage({
   }
 
   const params = (await searchParams) ?? {}
-
   const todayString = new Date().toISOString().split('T')[0]
 
   const selectedDate =
@@ -92,60 +121,121 @@ export default async function DashboardPage({
   const nextDate = shiftDate(selectedDate, 1)
 
   const displayName =
-    user.user_metadata?.display_name ||
-    user.email?.split('@')[0] ||
-    'User'
+    user.user_metadata?.display_name || user.email?.split('@')[0] || 'User'
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('calorie_goal, protein_goal, carb_goal, fat_goal')
     .eq('id', user.id)
     .maybeSingle()
+
+  if (profileError) {
+    throw new Error(profileError.message)
+  }
 
   const calorieGoal = Number(profile?.calorie_goal ?? 0)
   const proteinGoal = Number(profile?.protein_goal ?? 0)
   const carbGoal = Number(profile?.carb_goal ?? 0)
   const fatGoal = Number(profile?.fat_goal ?? 0)
 
-  const { data: foods } = await supabase
-  .from('foods')
-  .select(`
-    id,
-    name,
-    category,
-    serving_size_grams,
-    calories,
-    protein,
-    carbs,
-    fat,
-    fiber,
-    sugar,
-    sodium,
-    potassium,
-    calcium,
-    iron,
-    magnesium,
-    zinc,
-    vitamin_a,
-    vitamin_c,
-    vitamin_d,
-    vitamin_b12,
-    cholesterol,
-    saturated_fat,
-    trans_fat,
-    source,
-    source_id,
-    brand_name,
-    barcode
-  `)
-  .order('name', { ascending: true })
+  const { data: foods, error: foodsError } = await supabase
+    .from('foods')
+    .select(`
+      id,
+      name,
+      category,
+      serving_size_grams,
+      calories,
+      protein,
+      carbs,
+      fat,
+      fiber,
+      sugar,
+      sodium,
+      potassium,
+      calcium,
+      iron,
+      magnesium,
+      zinc,
+      vitamin_a,
+      vitamin_c,
+      vitamin_d,
+      vitamin_b12,
+      cholesterol,
+      saturated_fat,
+      trans_fat,
+      source,
+      source_id,
+      brand_name,
+      barcode
+    `)
+    .order('name', { ascending: true })
 
-  const { data: selectedLog } = await supabase
+  if (foodsError) {
+    throw new Error(foodsError.message)
+  }
+
+  const { data: selectedLog, error: selectedLogError } = await supabase
     .from('daily_logs')
     .select('id')
     .eq('user_id', user.id)
     .eq('log_date', selectedDate)
     .maybeSingle()
+
+  if (selectedLogError) {
+    throw new Error(selectedLogError.message)
+  }
+
+  const { data: recentFoodRows } = await supabase
+    .from('daily_log_items')
+    .select(`
+      food_id,
+      foods (
+        id,
+        name,
+        category,
+        serving_size_grams,
+        calories,
+        protein,
+        carbs,
+        fat,
+        fiber,
+        sugar,
+        sodium,
+        potassium,
+        calcium,
+        iron,
+        magnesium,
+        zinc,
+        vitamin_a,
+        vitamin_c,
+        vitamin_d,
+        vitamin_b12,
+        cholesterol,
+        saturated_fat,
+        trans_fat,
+        source,
+        source_id,
+        brand_name,
+        barcode
+      ),
+      daily_logs!inner (
+        user_id
+      )
+    `)
+    .eq('daily_logs.user_id', user.id)
+    .order('id', { ascending: false })
+    .limit(25)
+
+  const recentFoods =
+    recentFoodRows
+      ?.map((row) => (Array.isArray(row.foods) ? row.foods[0] : row.foods))
+      .filter(Boolean)
+      .filter(
+        (food, index, array) =>
+          array.findIndex((item) => item?.id === food?.id) === index
+      )
+      .slice(0, 8) ?? []
 
   let totalCalories = 0
   let totalProtein = 0
@@ -163,7 +253,7 @@ export default async function DashboardPage({
   let selectedItemsWithFoods: TodayItem[] = []
 
   if (selectedLog?.id) {
-    const { data: selectedItems } = await supabase
+    const { data: selectedItems, error: selectedItemsError } = await supabase
       .from('daily_log_items')
       .select(`
         id,
@@ -188,8 +278,11 @@ export default async function DashboardPage({
       .eq('daily_log_id', selectedLog.id)
       .order('id', { ascending: false })
 
-    selectedItemsWithFoods =
-      (selectedItems as unknown as TodayItem[]) ?? []
+    if (selectedItemsError) {
+      throw new Error(selectedItemsError.message)
+    }
+
+    selectedItemsWithFoods = (selectedItems as unknown as TodayItem[]) ?? []
 
     for (const item of selectedItemsWithFoods) {
       totalCalories += Number(item.calories ?? 0)
@@ -331,15 +424,68 @@ export default async function DashboardPage({
             {displayName}&apos;s Macros
           </h1>
 
-          <p className="mt-3 text-neutral-300">
-            Build your physique with precision nutrition.
-          </p>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
+            <p className="text-neutral-300">
+              Build your physique with precision nutrition.
+            </p>
+
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/goals"
+                className="rounded-xl border border-emerald-500/40 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:border-emerald-500 hover:bg-emerald-500/10"
+              >
+                Edit goals
+              </Link>
+
+              <Link
+                href="/foods/new"
+                className="rounded-xl border border-emerald-500/40 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:border-emerald-500 hover:bg-emerald-500/10"
+              >
+                Create custom food
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-8 rounded-2xl border border-neutral-800 bg-neutral-950 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-sm text-neutral-400">Selected date</p>
+                <h2 className="mt-1 text-2xl font-semibold">
+                  {formatDateLabel(selectedDate)}
+                </h2>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  href={`/dashboard?date=${previousDate}`}
+                  className="rounded-xl border border-emerald-500/40 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:border-emerald-500 hover:bg-emerald-500/10"
+                >
+                  Previous day
+                </Link>
+
+                {!isToday ? (
+                  <Link
+                    href="/dashboard"
+                    className="rounded-xl border border-emerald-500/40 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:border-emerald-500 hover:bg-emerald-500/10"
+                  >
+                    Today
+                  </Link>
+                ) : null}
+
+                <Link
+                  href={`/dashboard?date=${nextDate}`}
+                  className="rounded-xl border border-emerald-500/40 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:border-emerald-500 hover:bg-emerald-500/10"
+                >
+                  Next day
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           {macroCards.map((card) => {
             const remaining = Math.max(card.goal - card.consumed, 0)
-
             const percent = clampPercent(card.consumed, card.goal)
 
             return (
@@ -394,9 +540,7 @@ export default async function DashboardPage({
                   className="rounded-2xl border border-neutral-800 bg-neutral-950 p-6"
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm text-neutral-400">
-                      {card.label}
-                    </p>
+                    <p className="text-sm text-neutral-400">{card.label}</p>
 
                     <span
                       className={`rounded-full px-2 py-1 text-xs ${
@@ -422,9 +566,7 @@ export default async function DashboardPage({
                   <div className="mt-4 h-3 overflow-hidden rounded-full bg-neutral-800">
                     <div
                       className={`h-full rounded-full transition-all ${
-                        isOverLimit
-                          ? 'bg-red-500'
-                          : 'bg-emerald-500'
+                        isOverLimit ? 'bg-red-500' : 'bg-emerald-500'
                       }`}
                       style={{ width: `${percent}%` }}
                     />
@@ -445,7 +587,8 @@ export default async function DashboardPage({
 
         <div className="mt-8">
           <AddFoodForm
-            foods={foods ?? []}
+            foods={(foods as unknown as FoodOption[]) ?? []}
+            recentFoods={(recentFoods as unknown as FoodOption[]) ?? []}
             logDate={selectedDate}
           />
         </div>
@@ -461,9 +604,7 @@ export default async function DashboardPage({
 
               return (
                 <section key={meal}>
-                  <h3 className="mb-4 text-xl font-semibold">
-                    {meal}
-                  </h3>
+                  <h3 className="mb-4 text-xl font-semibold">{meal}</h3>
 
                   <div className="space-y-3">
                     {items.map((item) => (
@@ -472,9 +613,7 @@ export default async function DashboardPage({
                         className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-neutral-800 bg-neutral-950 p-4"
                       >
                         <div>
-                          <p className="font-medium">
-                            {item.foods?.name}
-                          </p>
+                          <p className="font-medium">{item.foods?.name}</p>
 
                           <p className="text-sm text-neutral-400">
                             {formatNumber(item.grams, 0)} g
@@ -482,21 +621,10 @@ export default async function DashboardPage({
                         </div>
 
                         <div className="flex flex-wrap items-center gap-4 text-sm text-neutral-300">
-                          <span>
-                            {formatNumber(item.calories, 0)} cal
-                          </span>
-
-                          <span>
-                            {formatNumber(item.protein, 1)} P
-                          </span>
-
-                          <span>
-                            {formatNumber(item.carbs, 1)} C
-                          </span>
-
-                          <span>
-                            {formatNumber(item.fat, 1)} F
-                          </span>
+                          <span>{formatNumber(item.calories, 0)} cal</span>
+                          <span>{formatNumber(item.protein, 1)} P</span>
+                          <span>{formatNumber(item.carbs, 1)} C</span>
+                          <span>{formatNumber(item.fat, 1)} F</span>
 
                           <Link
                             href={`/entries/${item.id}`}
