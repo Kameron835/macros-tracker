@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import SignOutButton from '@/components/sign-out-button'
@@ -21,18 +21,26 @@ export default function AppHeaderNav({ isSignedIn }: AppHeaderNavProps) {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
 
+  // Close menu on route change
+  useEffect(() => {
+    setIsOpen(false)
+  }, [pathname])
+
+  // Prevent body scroll when menu is open
+  useEffect(() => {
+    document.body.style.overflow = isOpen ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [isOpen])
+
   const hideNav =
     pathname === '/' ||
     pathname === '/login' ||
     pathname === '/signup' ||
     pathname.startsWith('/auth')
 
-  if (hideNav) {
-    return null
-  }
+  if (hideNav) return null
 
   return (
-    // 👇 Add `relative` here so the dropdown anchors to this element
     <div className="relative flex items-center gap-3">
       <Link
         href="/foods/barcode"
@@ -43,31 +51,51 @@ export default function AppHeaderNav({ isSignedIn }: AppHeaderNavProps) {
 
       <button
         type="button"
-        onClick={() => setIsOpen((value) => !value)}
+        onClick={() => setIsOpen((v) => !v)}
         className="rounded-xl border border-emerald-500 px-4 py-2 text-sm font-medium text-emerald-300"
       >
-        Menu
+        {isOpen ? 'Close' : 'Menu'}
       </button>
 
-      {isOpen ? (
-        // 👇 Replace `left-6 right-6 top-28` with `right-0 top-full mt-2`
-        <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl border border-neutral-800 bg-neutral-950 p-3 shadow-2xl">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={() => setIsOpen(false)}
-              className="block rounded-xl px-4 py-3 text-sm font-medium text-neutral-300 hover:bg-neutral-900 hover:text-emerald-400"
-            >
-              {link.label}
-            </Link>
-          ))}
+      {isOpen && (
+        <>
+          {/* Full-screen backdrop */}
+          <div
+            className="fixed inset-0 z-40 bg-black/60"
+            onClick={() => setIsOpen(false)}
+          />
 
-          <div className="mt-2 border-t border-neutral-800 pt-3">
-            <SignOutButton />
+          {/* Drawer panel — slides in from the top, always visible */}
+          <div className="fixed left-0 right-0 top-0 z-50 rounded-b-2xl border-b border-neutral-800 bg-neutral-950 p-4 shadow-2xl">
+            {/* Close row */}
+            <div className="mb-4 flex items-center justify-between">
+              <span className="text-sm font-medium text-neutral-400">Navigation</span>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="rounded-xl border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300"
+              >
+                Close
+              </button>
+            </div>
+
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setIsOpen(false)}
+                className="block rounded-xl px-4 py-3 text-sm font-medium text-neutral-300 hover:bg-neutral-900 hover:text-emerald-400"
+              >
+                {link.label}
+              </Link>
+            ))}
+
+            <div className="mt-2 border-t border-neutral-800 pt-3">
+              <SignOutButton />
+            </div>
           </div>
-        </div>
-      ) : null}
+        </>
+      )}
     </div>
   )
 }
