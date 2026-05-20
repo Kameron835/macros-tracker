@@ -5,6 +5,31 @@ import { createClient } from '@/lib/supabase/server'
 
 type MealType = 'Breakfast' | 'Lunch' | 'Dinner' | 'Snacks'
 
+type BaseFoodInput = {
+  name: string
+  category: string
+  servingSizeGrams: number
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+  fiber?: number
+  sugar?: number
+  sodium?: number
+  potassium?: number
+  calcium?: number
+  iron?: number
+  magnesium?: number
+  zinc?: number
+  vitaminA?: number
+  vitaminC?: number
+  vitaminD?: number
+  vitaminB12?: number
+  cholesterol?: number
+  saturatedFat?: number
+  transFat?: number
+}
+
 type AddFoodInput = {
   foodId: number
   grams: number
@@ -12,25 +37,10 @@ type AddFoodInput = {
   logDate: string
 }
 
-type CreateCustomFoodInput = {
-  name: string
-  category: string
-  servingSizeGrams: number
-  calories: number
-  protein: number
-  carbs: number
-  fat: number
-}
+type CreateCustomFoodInput = BaseFoodInput
 
-type UpdateCustomFoodInput = {
+type UpdateCustomFoodInput = BaseFoodInput & {
   foodId: number
-  name: string
-  category: string
-  servingSizeGrams: number
-  calories: number
-  protein: number
-  carbs: number
-  fat: number
 }
 
 type UpdateLoggedEntryInput = {
@@ -63,6 +73,78 @@ type FoodNutrition = {
   trans_fat: number | null
 }
 
+function num(value: number | undefined) {
+  return Number(value ?? 0)
+}
+
+function customFoodPayload(input: BaseFoodInput, userId: string) {
+  return {
+    name: input.name.trim(),
+    category: input.category.trim() || 'Custom',
+    serving_size_grams: input.servingSizeGrams,
+
+    calories: input.calories,
+    protein: input.protein,
+    carbs: input.carbs,
+    fat: input.fat,
+
+    fiber: num(input.fiber),
+    sugar: num(input.sugar),
+    sodium: num(input.sodium),
+    potassium: num(input.potassium),
+    calcium: num(input.calcium),
+    iron: num(input.iron),
+    magnesium: num(input.magnesium),
+    zinc: num(input.zinc),
+    vitamin_a: num(input.vitaminA),
+    vitamin_c: num(input.vitaminC),
+    vitamin_d: num(input.vitaminD),
+    vitamin_b12: num(input.vitaminB12),
+    cholesterol: num(input.cholesterol),
+    saturated_fat: num(input.saturatedFat),
+    trans_fat: num(input.transFat),
+
+    user_id: userId,
+    is_custom: true,
+    source: 'custom',
+  }
+}
+
+function validateFoodInput(input: BaseFoodInput) {
+  const name = input.name.trim()
+
+  if (!name) {
+    throw new Error('Food name is required.')
+  }
+
+  const values = [
+    input.servingSizeGrams,
+    input.calories,
+    input.protein,
+    input.carbs,
+    input.fat,
+    num(input.fiber),
+    num(input.sugar),
+    num(input.sodium),
+    num(input.potassium),
+    num(input.calcium),
+    num(input.iron),
+    num(input.magnesium),
+    num(input.zinc),
+    num(input.vitaminA),
+    num(input.vitaminC),
+    num(input.vitaminD),
+    num(input.vitaminB12),
+    num(input.cholesterol),
+    num(input.saturatedFat),
+    num(input.transFat),
+  ]
+
+  if (input.servingSizeGrams <= 0 || values.some((value) => value < 0)) {
+    throw new Error('Please enter valid food values.')
+  }
+}
+
 function scaleFoodNutrition(food: FoodNutrition, grams: number) {
   const ratio = grams / Number(food.serving_size_grams)
 
@@ -71,7 +153,6 @@ function scaleFoodNutrition(food: FoodNutrition, grams: number) {
     protein: Number(food.protein ?? 0) * ratio,
     carbs: Number(food.carbs ?? 0) * ratio,
     fat: Number(food.fat ?? 0) * ratio,
-
     fiber: Number(food.fiber ?? 0) * ratio,
     sugar: Number(food.sugar ?? 0) * ratio,
     sodium: Number(food.sodium ?? 0) * ratio,
@@ -336,50 +417,11 @@ export async function createCustomFood(input: CreateCustomFoodInput) {
     throw new Error('You must be logged in to create a custom food.')
   }
 
-  const name = input.name.trim()
-  const category = input.category.trim()
+  validateFoodInput(input)
 
-  if (!name) {
-    throw new Error('Food name is required.')
-  }
-
-  if (
-    input.servingSizeGrams <= 0 ||
-    input.calories < 0 ||
-    input.protein < 0 ||
-    input.carbs < 0 ||
-    input.fat < 0
-  ) {
-    throw new Error('Please enter valid food values.')
-  }
-
-  const { error } = await supabase.from('foods').insert({
-    name,
-    category: category || 'Custom',
-    serving_size_grams: input.servingSizeGrams,
-    calories: input.calories,
-    protein: input.protein,
-    carbs: input.carbs,
-    fat: input.fat,
-    fiber: 0,
-    sugar: 0,
-    sodium: 0,
-    potassium: 0,
-    calcium: 0,
-    iron: 0,
-    magnesium: 0,
-    zinc: 0,
-    vitamin_a: 0,
-    vitamin_c: 0,
-    vitamin_d: 0,
-    vitamin_b12: 0,
-    cholesterol: 0,
-    saturated_fat: 0,
-    trans_fat: 0,
-    user_id: user.id,
-    is_custom: true,
-    source: 'custom',
-  })
+  const { error } = await supabase.from('foods').insert(
+    customFoodPayload(input, user.id)
+  )
 
   if (error) {
     throw new Error(error.message)
@@ -402,26 +444,11 @@ export async function updateCustomFood(input: UpdateCustomFoodInput) {
     throw new Error('You must be logged in to update a custom food.')
   }
 
-  const name = input.name.trim()
-  const category = input.category.trim()
-
-  if (!name) {
-    throw new Error('Food name is required.')
-  }
-
-  if (
-    input.servingSizeGrams <= 0 ||
-    input.calories < 0 ||
-    input.protein < 0 ||
-    input.carbs < 0 ||
-    input.fat < 0
-  ) {
-    throw new Error('Please enter valid food values.')
-  }
+  validateFoodInput(input)
 
   const { data: existingFood, error: existingFoodError } = await supabase
     .from('foods')
-    .select('id, user_id, is_custom')
+    .select('id, user_id, is_custom, source')
     .eq('id', input.foodId)
     .single()
 
@@ -429,21 +456,22 @@ export async function updateCustomFood(input: UpdateCustomFoodInput) {
     throw new Error(existingFoodError?.message || 'Custom food not found.')
   }
 
-  if (existingFood.user_id !== user.id || existingFood.is_custom !== true) {
-    throw new Error('You can only edit your own custom foods.')
+  if (
+    existingFood.user_id !== user.id ||
+    existingFood.is_custom !== true ||
+    existingFood.source === 'recipe'
+  ) {
+    throw new Error('You can only edit your own manually created foods.')
   }
+
+  const { user_id, is_custom, source, ...payload } = customFoodPayload(
+    input,
+    user.id
+  )
 
   const { error } = await supabase
     .from('foods')
-    .update({
-      name,
-      category: category || 'Custom',
-      serving_size_grams: input.servingSizeGrams,
-      calories: input.calories,
-      protein: input.protein,
-      carbs: input.carbs,
-      fat: input.fat,
-    })
+    .update(payload)
     .eq('id', input.foodId)
 
   if (error) {
@@ -453,6 +481,7 @@ export async function updateCustomFood(input: UpdateCustomFoodInput) {
   revalidatePath('/dashboard')
   revalidatePath('/foods/new')
   revalidatePath('/foods/manage')
+  revalidatePath(`/foods/manage/${input.foodId}`)
 }
 
 export async function deleteCustomFood(foodId: number) {
