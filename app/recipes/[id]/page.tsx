@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import AddRecipeIngredientForm from '@/components/recipes/add-recipe-ingredient-form'
 import LogRecipeForm from '@/components/recipes/log-recipe-form'
 import RemoveRecipeIngredientButton from '@/components/recipes/remove-recipe-ingredient-button'
+import IngredientMatchReview from '@/components/recipes/ingredient-match-review'
 
 function formatNumber(value: number, decimals = 0) {
   return new Intl.NumberFormat('en-US', {
@@ -318,6 +319,12 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
                 typeof AddRecipeIngredientForm
               >[0]['foods']}
             />
+            <div className="mt-8">
+              <IngredientMatchReview
+                recipeId={recipe.id}
+                initialIngredientText=""
+              />
+            </div>
           </div>
         </div>
 
