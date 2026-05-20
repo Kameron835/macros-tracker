@@ -5,6 +5,7 @@ import AddRecipeIngredientForm from '@/components/recipes/add-recipe-ingredient-
 import LogRecipeForm from '@/components/recipes/log-recipe-form'
 import RemoveRecipeIngredientButton from '@/components/recipes/remove-recipe-ingredient-button'
 import IngredientMatchReview from '@/components/recipes/ingredient-match-review'
+import AutoRecipeNutritionForm from '@/components/recipes/auto-recipe-nutrition-form'
 
 function formatNumber(value: number, decimals = 0) {
   return new Intl.NumberFormat('en-US', {
@@ -324,6 +325,12 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
                 recipeId={recipe.id}
                 initialIngredientText=""
               />
+            </div>
+            <div className="mt-8">
+               <AutoRecipeNutritionForm
+               recipeId={recipe.id}
+               initialIngredientText=""
+                />
             </div>
           </div>
         </div>
