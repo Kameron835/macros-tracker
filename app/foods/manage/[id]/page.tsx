@@ -1,19 +1,21 @@
 import Link from 'next/link'
-import { redirect, notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import EditCustomFoodForm from '@/components/dashboard/edit-custom-food-form'
 
-type EditFoodPageProps = {
+type ManageFoodEditPageProps = {
   params: Promise<{
     id: string
   }>
 }
 
-export default async function EditFoodPage({ params }: EditFoodPageProps) {
+export default async function ManageFoodEditPage({
+  params,
+}: ManageFoodEditPageProps) {
   const { id } = await params
   const foodId = Number(id)
 
-  if (!foodId || Number.isNaN(foodId)) {
+  if (!foodId) {
     notFound()
   }
 
@@ -29,9 +31,20 @@ export default async function EditFoodPage({ params }: EditFoodPageProps) {
 
   const { data: food, error } = await supabase
     .from('foods')
-    .select(
-      'id, name, category, serving_size_grams, calories, protein, carbs, fat, user_id, is_custom'
-    )
+    .select(`
+      id,
+      name,
+      category,
+      serving_size_grams,
+      calories,
+      protein,
+      carbs,
+      fat,
+      user_id,
+      is_custom,
+      source,
+      source_id
+    `)
     .eq('id', foodId)
     .single()
 
@@ -43,6 +56,9 @@ export default async function EditFoodPage({ params }: EditFoodPageProps) {
     notFound()
   }
 
+  const isRecipeFood = food.source === 'recipe' && food.source_id
+  const recipeId = food.source_id
+
   return (
     <main className="min-h-screen bg-neutral-950 px-6 py-16 text-white">
       <div className="mx-auto max-w-4xl">
@@ -53,11 +69,13 @@ export default async function EditFoodPage({ params }: EditFoodPageProps) {
             </p>
 
             <h1 className="mt-3 text-4xl font-bold tracking-tight">
-              Edit Custom Food
+              {isRecipeFood ? 'Recipe Food' : 'Edit Custom Food'}
             </h1>
 
             <p className="mt-3 text-neutral-300">
-              Update the food information for your custom item.
+              {isRecipeFood
+                ? 'This saved food was generated from a recipe.'
+                : 'Update your saved custom food values.'}
             </p>
           </div>
 
@@ -71,23 +89,48 @@ export default async function EditFoodPage({ params }: EditFoodPageProps) {
 
             <Link
               href="/dashboard"
-              className="rounded-xl border border-emerald-500/40 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:border-emerald-500 hover:bg-emerald-500/10"
+              className="rounded-xl border border-neutral-700 px-4 py-2 text-sm font-medium text-neutral-300 transition hover:border-emerald-500 hover:text-emerald-300"
             >
               Back to dashboard
             </Link>
           </div>
         </div>
 
-        <EditCustomFoodForm
-          foodId={food.id}
-          initialName={food.name}
-          initialCategory={food.category ?? 'Custom'}
-          initialServingSizeGrams={Number(food.serving_size_grams)}
-          initialCalories={Number(food.calories)}
-          initialProtein={Number(food.protein)}
-          initialCarbs={Number(food.carbs)}
-          initialFat={Number(food.fat)}
-        />
+        {isRecipeFood ? (
+          <div className="rounded-3xl border border-neutral-800 bg-neutral-900 p-6">
+            <h2 className="text-2xl font-semibold text-white">{food.name}</h2>
+
+            <p className="mt-2 text-sm text-neutral-400">
+              This food was created from a recipe. To change its ingredients or
+              serving-based nutrition, edit the original recipe instead of
+              editing it like a custom food.
+            </p>
+
+            <div className="mt-6 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-200">
+              Estimated nutrition values. Actual values may vary depending on
+              ingredient brands, substitutions, cooking methods, cooking loss,
+              and serving sizes.
+            </div>
+
+            <Link
+              href={`/recipes/${recipeId}`}
+              className="mt-6 inline-block rounded-xl bg-emerald-500 px-4 py-3 font-medium text-white transition hover:bg-emerald-600"
+            >
+              Edit recipe ingredients
+            </Link>
+          </div>
+        ) : (
+          <EditCustomFoodForm
+            foodId={food.id}
+            initialName={food.name}
+            initialCategory={food.category ?? ''}
+            initialServingSizeGrams={Number(food.serving_size_grams ?? 100)}
+            initialCalories={Number(food.calories ?? 0)}
+            initialProtein={Number(food.protein ?? 0)}
+            initialCarbs={Number(food.carbs ?? 0)}
+            initialFat={Number(food.fat ?? 0)}
+          />
+        )}
       </div>
     </main>
   )
