@@ -37,7 +37,11 @@ export default function AutoRecipeNutritionForm({
           `Added ${result.addedCount} ingredients. Skipped ${result.skippedCount}.`
         )
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Something went wrong.')
+        setError(
+            err instanceof Error 
+            ? `Auto-generation failed: ${err.message}`
+            : 'Something went wrong.'
+        )
       }
     })
   }
