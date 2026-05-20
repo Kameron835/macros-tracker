@@ -10,6 +10,7 @@ type AppHeaderNavProps = {
 }
 
 const navLinks = [
+  { href: '/recipes/import', label: 'Import Recipe' },
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/goals', label: 'Goals' },
   { href: '/foods/new', label: 'New Food' },

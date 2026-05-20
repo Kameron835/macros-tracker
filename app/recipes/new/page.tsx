@@ -33,12 +33,21 @@ export default async function NewRecipePage() {
             </p>
           </div>
 
-          <Link
-            href="/dashboard"
-            className="rounded-xl border border-emerald-500/40 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:border-emerald-500 hover:bg-emerald-500/10"
-          >
-            Back to dashboard
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/recipes/import"
+              className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-600"
+            >
+              Import from URL
+            </Link>
+
+            <Link
+              href="/dashboard"
+              className="rounded-xl border border-emerald-500/40 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:border-emerald-500 hover:bg-emerald-500/10"
+            >
+              Back to dashboard
+            </Link>
+          </div>
         </div>
 
         <CreateRecipeForm />
