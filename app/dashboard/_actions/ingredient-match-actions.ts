@@ -1,6 +1,18 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { importUsdaFood, searchUsdaFoods } from '@/app/dashboard/_actions/usda-actions'
+
+type FoodMatch = {
+  id: number
+  name: string
+  category: string | null
+  serving_size_grams: number
+  calories: number | null
+  protein: number | null
+  carbs: number | null
+  fat: number | null
+}
 
 type ParsedIngredient = {
   originalText: string
@@ -8,16 +20,7 @@ type ParsedIngredient = {
   unit: string | null
   ingredientName: string
   estimatedGrams: number | null
-  matches: {
-    id: number
-    name: string
-    category: string | null
-    serving_size_grams: number
-    calories: number | null
-    protein: number | null
-    carbs: number | null
-    fat: number | null
-  }[]
+  matches: FoodMatch[]
 }
 
 const unitGramMap: Record<string, number> = {
@@ -73,30 +76,21 @@ function parseFraction(value: string) {
 }
 
 function parseAmount(raw: string) {
-  const cleaned = raw
-    .replace('¼', '1/4')
-    .replace('½', '1/2')
-    .replace('¾', '3/4')
-    .replace('⅓', '1/3')
-    .replace('⅔', '2/3')
-    .replace('⅛', '1/8')
-    .replace('⅜', '3/8')
-    .replace('⅝', '5/8')
-    .replace('⅞', '7/8')
+  if (raw.includes('/')) {
+    const mixedMatch = raw.match(/^(\d+)\s+(\d+\/\d+)/)
 
-  const mixedMatch = cleaned.match(/^(\d+)\s+(\d+\/\d+)/)
+    if (mixedMatch) {
+      return Number(mixedMatch[1]) + parseFraction(mixedMatch[2])
+    }
 
-  if (mixedMatch) {
-    return Number(mixedMatch[1]) + parseFraction(mixedMatch[2])
+    const fractionMatch = raw.match(/^(\d+\/\d+)/)
+
+    if (fractionMatch) {
+      return parseFraction(fractionMatch[1])
+    }
   }
 
-  const fractionMatch = cleaned.match(/^(\d+\/\d+)/)
-
-  if (fractionMatch) {
-    return parseFraction(fractionMatch[1])
-  }
-
-  const numberMatch = cleaned.match(/^(\d+(\.\d+)?)/)
+  const numberMatch = raw.match(/^(\d+(\.\d+)?)/)
 
   if (numberMatch) {
     return Number(numberMatch[1])
@@ -105,19 +99,43 @@ function parseAmount(raw: string) {
   return null
 }
 
+function normalizeFractions(text: string) {
+  return text
+    .replaceAll('¼', '1/4')
+    .replaceAll('½', '1/2')
+    .replaceAll('¾', '3/4')
+    .replaceAll('⅓', '1/3')
+    .replaceAll('⅔', '2/3')
+    .replaceAll('⅛', '1/8')
+    .replaceAll('⅜', '3/8')
+    .replaceAll('⅝', '5/8')
+    .replaceAll('⅞', '7/8')
+}
+
 function normalizeIngredientName(text: string) {
   return text
     .replace(/\([^)]*\)/g, '')
+    .replace(/\bboneless\b/gi, '')
+    .replace(/\bbone-in\b/gi, '')
+    .replace(/\bstems?\b/gi, '')
+    .replace(/\bseeds?\b/gi, '')
+    .replace(/\bremoved\b/gi, '')
     .replace(/\bchopped\b/gi, '')
     .replace(/\bdiced\b/gi, '')
     .replace(/\bminced\b/gi, '')
     .replace(/\bsliced\b/gi, '')
+    .replace(/\bthinly\b/gi, '')
+    .replace(/\btorn\b/gi, '')
+    .replace(/\bpieces\b/gi, '')
     .replace(/\bcrushed\b/gi, '')
     .replace(/\bfresh\b/gi, '')
     .replace(/\bdried\b/gi, '')
     .replace(/\bground\b/gi, '')
+    .replace(/\btoasted\b/gi, '')
     .replace(/\boptional\b/gi, '')
     .replace(/\bto taste\b/gi, '')
+    .replace(/\bor\b/gi, ' ')
+    .replace(/["“”]/g, '')
     .replace(/,/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
@@ -125,19 +143,7 @@ function normalizeIngredientName(text: string) {
 
 function parseIngredientLine(line: string) {
   const originalText = line.trim()
-
-  const cleaned = originalText
-    .replace('¼', '1/4')
-    .replace('½', '1/2')
-    .replace('¾', '3/4')
-    .replace('⅓', '1/3')
-    .replace('⅔', '2/3')
-    .replace('⅛', '1/8')
-    .replace('⅜', '3/8')
-    .replace('⅝', '5/8')
-    .replace('⅞', '7/8')
-    .trim()
-
+  const cleaned = normalizeFractions(originalText).trim()
   const amount = parseAmount(cleaned)
 
   let remaining = cleaned
@@ -163,9 +169,7 @@ function parseIngredientLine(line: string) {
   const estimatedGrams =
     amount !== null && unit && unitGramMap[unit]
       ? amount * unitGramMap[unit]
-      : amount !== null && !unit
-        ? null
-        : null
+      : null
 
   return {
     originalText,
@@ -174,6 +178,73 @@ function parseIngredientLine(line: string) {
     ingredientName,
     estimatedGrams,
   }
+}
+
+function buildSearchQuery(ingredientName: string) {
+  return ingredientName
+    .split(/\s+/)
+    .filter((word) => word.length > 2)
+    .slice(-4)
+    .join(' ')
+}
+
+async function searchLocalFoods(query: string): Promise<FoodMatch[]> {
+  if (!query) {
+    return []
+  }
+
+  const supabase = await createClient()
+
+  const { data } = await supabase
+    .from('foods')
+    .select(`
+      id,
+      name,
+      category,
+      serving_size_grams,
+      calories,
+      protein,
+      carbs,
+      fat
+    `)
+    .or(`name.ilike.%${query}%,category.ilike.%${query}%`)
+    .limit(8)
+
+  return (data ?? []) as FoodMatch[]
+}
+
+async function searchAndImportBestUsdaFood(query: string): Promise<FoodMatch[]> {
+  if (!query) {
+    return []
+  }
+
+  const usdaResults = await searchUsdaFoods(query)
+
+  if (usdaResults.length === 0) {
+    return []
+  }
+
+  const bestResult = usdaResults[0]
+  const importedFood = await importUsdaFood(bestResult.fdcId)
+
+  const supabase = await createClient()
+
+  const { data: food } = await supabase
+    .from('foods')
+    .select(`
+      id,
+      name,
+      category,
+      serving_size_grams,
+      calories,
+      protein,
+      carbs,
+      fat
+    `)
+    .eq('id', importedFood.id)
+    .single()
+
+  return food ? [(food as FoodMatch)] : []
 }
 
 export async function matchImportedIngredients(ingredientText: string) {
@@ -197,33 +268,12 @@ export async function matchImportedIngredients(ingredientText: string) {
 
   for (const line of lines) {
     const parsed = parseIngredientLine(line)
+    const query = buildSearchQuery(parsed.ingredientName)
 
-    const searchTerms = parsed.ingredientName
-      .split(/\s+/)
-      .filter((word) => word.length > 2)
-      .slice(-4)
+    let matches = await searchLocalFoods(query)
 
-    const query = searchTerms.join(' ')
-
-    let matches: ParsedIngredient['matches'] = []
-
-    if (query) {
-      const { data } = await supabase
-        .from('foods')
-        .select(`
-          id,
-          name,
-          category,
-          serving_size_grams,
-          calories,
-          protein,
-          carbs,
-          fat
-        `)
-        .or(`name.ilike.%${query}%,category.ilike.%${query}%`)
-        .limit(8)
-
-      matches = data ?? []
+    if (matches.length === 0) {
+      matches = await searchAndImportBestUsdaFood(query)
     }
 
     results.push({
