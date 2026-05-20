@@ -69,7 +69,11 @@ export default function IngredientMatchReview({
         setGramsByIndex(initialGrams)
         setMessage('Ingredient matching complete. Review before adding.')
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Something went wrong.')
+        setError(
+          err instanceof Error
+            ? `Ingredient matching failed: ${err.message}`
+            : 'Ingredient matching failed.'
+        )
       }
     })
   }
@@ -102,7 +106,11 @@ export default function IngredientMatchReview({
 
         setMessage(`Added: ${results[index]?.originalText}`)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Something went wrong.')
+        setError(
+          err instanceof Error
+            ? `Could not add ingredient: ${err.message}`
+            : 'Could not add ingredient.'
+        )
       }
     })
   }
@@ -135,7 +143,11 @@ export default function IngredientMatchReview({
 
         setMessage(`Added ${addedCount} matched ingredients.`)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Something went wrong.')
+        setError(
+          err instanceof Error
+            ? `Could not add matched ingredients: ${err.message}`
+            : 'Could not add matched ingredients.'
+        )
       }
     })
   }
@@ -282,7 +294,10 @@ export default function IngredientMatchReview({
         </div>
       ) : null}
 
-      {message ? <p className="mt-4 text-sm text-emerald-400">{message}</p> : null}
+      {message ? (
+        <p className="mt-4 text-sm text-emerald-400">{message}</p>
+      ) : null}
+
       {error ? <p className="mt-4 text-sm text-red-400">{error}</p> : null}
     </div>
   )
