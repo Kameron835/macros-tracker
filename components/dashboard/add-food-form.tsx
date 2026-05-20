@@ -2,6 +2,10 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { addFoodToToday } from '@/app/dashboard/_actions/food-actions'
+import {
+  importUsdaFood,
+  searchUsdaFoods,
+} from '@/app/dashboard/_actions/usda-actions'
 import FavoriteFoodButton from '@/components/dashboard/favorite-food-button'
 
 type FoodOption = {
@@ -34,6 +38,17 @@ type FoodOption = {
   barcode: string | null
 }
 
+type UsdaResult = {
+  fdcId: number
+  name: string
+  category: string
+  brandName: string | null
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+}
+
 type AddFoodFormProps = {
   foods: FoodOption[]
   favoriteFoods: FoodOption[]
@@ -58,6 +73,10 @@ function getSourceLabel(food: FoodOption) {
 
   if (food.source === 'custom') {
     return 'Custom'
+  }
+
+  if (food.source === 'recipe') {
+    return 'Recipe'
   }
 
   return food.source ?? 'Manual'
@@ -147,10 +166,7 @@ function FoodResultCard({
             </p>
           </div>
 
-          <FavoriteFoodButton
-            foodId={food.id}
-            isFavorite={isFavorite}
-          />
+          <FavoriteFoodButton foodId={food.id} isFavorite={isFavorite} />
         </div>
       </div>
     </div>
@@ -171,6 +187,9 @@ export default function AddFoodForm({
     useState<(typeof mealOptions)[number]>('Breakfast')
 
   const [grams, setGrams] = useState('100')
+
+  const [usdaResults, setUsdaResults] = useState<UsdaResult[]>([])
+  const [usdaMessage, setUsdaMessage] = useState('')
 
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -225,6 +244,8 @@ export default function AddFoodForm({
     setSelectedFoodId(null)
     setError('')
     setSuccess('')
+    setUsdaMessage('')
+    setUsdaResults([])
   }
 
   function handleSelectFood(food: FoodOption) {
@@ -232,6 +253,55 @@ export default function AddFoodForm({
     setQuery(food.name)
     setError('')
     setSuccess('')
+    setUsdaMessage('')
+  }
+
+  function handleSearchUsda() {
+    const trimmed = query.trim()
+
+    if (!trimmed) {
+      setError('Enter a food name before searching USDA.')
+      return
+    }
+
+    setError('')
+    setSuccess('')
+    setUsdaMessage('')
+
+    startTransition(async () => {
+      try {
+        const results = await searchUsdaFoods(trimmed)
+
+        setUsdaResults(results)
+
+        if (results.length === 0) {
+          setUsdaMessage('No USDA foods found for that search.')
+        } else {
+          setUsdaMessage('USDA results found. Import one to use it.')
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'USDA search failed.')
+      }
+    })
+  }
+
+  function handleImportUsdaFood(fdcId: number) {
+    setError('')
+    setSuccess('')
+    setUsdaMessage('')
+
+    startTransition(async () => {
+      try {
+        const importedFood = await importUsdaFood(fdcId)
+
+        setSuccess(`${importedFood.name} was imported. Refreshing search...`)
+        setQuery(importedFood.name)
+        setUsdaResults([])
+        setSelectedFoodId(importedFood.id)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Could not import USDA food.')
+      }
+    })
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -274,7 +344,7 @@ export default function AddFoodForm({
       <h2 className="text-2xl font-semibold">Add food</h2>
 
       <p className="mt-2 text-sm text-neutral-400">
-        Search your nutrition database or choose favorites/recent foods.
+        Search your nutrition database or import foods from USDA.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
@@ -307,7 +377,7 @@ export default function AddFoodForm({
             type="text"
             value={query}
             onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="Search chicken, rice, banana, salmon..."
+            placeholder="Search chicken, rice, chuck roast..."
             className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 py-3 outline-none transition focus:border-emerald-500"
           />
         </div>
@@ -377,9 +447,20 @@ export default function AddFoodForm({
                 ) : null}
               </>
             ) : filteredFoods.length === 0 ? (
-              <p className="px-4 py-4 text-sm text-neutral-400">
-                No foods found.
-              </p>
+              <div className="px-4 py-4">
+                <p className="text-sm text-neutral-400">
+                  No local foods found.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={handleSearchUsda}
+                  disabled={isPending}
+                  className="mt-3 rounded-xl border border-emerald-500/50 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500 hover:text-white disabled:opacity-50"
+                >
+                  {isPending ? 'Searching USDA...' : 'Search USDA'}
+                </button>
+              </div>
             ) : (
               filteredFoods.map((food) => (
                 <FoodResultCard
@@ -394,6 +475,54 @@ export default function AddFoodForm({
             )}
           </div>
         </div>
+
+        {usdaMessage ? (
+          <p className="text-sm text-neutral-400">{usdaMessage}</p>
+        ) : null}
+
+        {usdaResults.length > 0 ? (
+          <div className="rounded-2xl border border-neutral-800 bg-neutral-950">
+            <div className="border-b border-neutral-800 px-4 py-3">
+              <p className="text-sm font-medium text-white">USDA results</p>
+
+              <p className="text-xs text-neutral-500">
+                Import a result to save it into your food database.
+              </p>
+            </div>
+
+            {usdaResults.map((food) => (
+              <div
+                key={food.fdcId}
+                className="flex flex-wrap items-center justify-between gap-4 border-b border-neutral-800 px-4 py-4 last:border-b-0"
+              >
+                <div>
+                  <p className="font-medium text-white">{food.name}</p>
+
+                  <p className="mt-1 text-sm text-neutral-400">
+                    {food.category}
+                    {food.brandName ? ` • ${food.brandName}` : ''}
+                  </p>
+
+                  <p className="mt-2 text-xs text-neutral-500">
+                    {formatNumber(food.calories, 0)} cal •{' '}
+                    {formatNumber(food.protein, 1)}g P •{' '}
+                    {formatNumber(food.carbs, 1)}g C •{' '}
+                    {formatNumber(food.fat, 1)}g F / 100g
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleImportUsdaFood(food.fdcId)}
+                  disabled={isPending}
+                  className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-600 disabled:opacity-50"
+                >
+                  Import
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
 
         {selectedFood ? (
           <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-neutral-300">
